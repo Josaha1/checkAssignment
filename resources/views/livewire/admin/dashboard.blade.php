@@ -1,54 +1,105 @@
 <div>
     <x-admin-shell title="แดชบอร์ด">
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {{-- stat cards --}}
+        <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             @php
                 $cards = [
-                    ['ภาพรวมนักศึกษา', $stats['students'], 'indigo'],
-                    ['รายวิชา', $stats['subjects'], 'violet'],
-                    ['ห้องเรียน', $stats['rooms'], 'sky'],
-                    ['ชิ้นงานทั้งหมด', $stats['assignments'], 'emerald'],
-                    ['ส่งงานแล้ว', $stats['submissions'], 'teal'],
-                    ['รอตรวจ', $stats['ungraded'], 'amber'],
+                    ['นักศึกษา', $stats['students'], 'users', 'brand'],
+                    ['รายวิชา', $stats['subjects'], 'book', 'violet'],
+                    ['ห้องเรียน', $stats['rooms'], 'school', 'sky'],
+                    ['ชิ้นงาน', $stats['assignments'], 'clipboard', 'emerald'],
+                    ['ส่งแล้ว', $stats['submissions'], 'inbox', 'teal'],
+                    ['รอตรวจ', $stats['ungraded'], 'clock', 'amber'],
                 ];
             @endphp
-            @foreach ($cards as [$label, $value, $color])
-                <div class="bg-white rounded-xl border border-slate-200 p-5">
-                    <p class="text-sm text-slate-500">{{ $label }}</p>
-                    <p class="text-3xl font-bold text-{{ $color }}-600 mt-1">{{ $value }}</p>
+            @foreach ($cards as [$label, $value, $icon, $color])
+                <div class="card card-pad flex items-center gap-4">
+                    <span class="grid place-items-center w-11 h-11 rounded-xl bg-{{ $color }}-100 text-{{ $color }}-600 dark:bg-{{ $color }}-500/15 dark:text-{{ $color }}-400">
+                        <x-icon name="{{ $icon }}" class="w-5 h-5" />
+                    </span>
+                    <div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white leading-none">{{ $value }}</p>
+                        <p class="text-xs text-slate-500 mt-1">{{ $label }}</p>
+                    </div>
                 </div>
             @endforeach
         </div>
 
-        <div class="mt-6 bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div class="px-5 py-3 border-b border-slate-100 font-semibold text-slate-800">การส่งงานล่าสุด</div>
-            <table class="w-full text-sm">
-                <thead class="bg-slate-50 text-slate-500">
-                    <tr>
-                        <th class="text-left px-5 py-2 font-medium">รหัสนักศึกษา</th>
-                        <th class="text-left px-5 py-2 font-medium">วิชา · งาน</th>
-                        <th class="text-left px-5 py-2 font-medium">เวลา</th>
-                        <th class="text-left px-5 py-2 font-medium">สถานะ</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @forelse ($recent as $s)
+        <div class="grid lg:grid-cols-3 gap-6 mt-6">
+            {{-- bar chart --}}
+            <div class="lg:col-span-2 card card-pad"
+                 x-data
+                 x-init="
+                    new ApexCharts($refs.bar, {
+                        chart: { type: 'bar', height: 280, fontFamily: 'inherit', toolbar: { show: false } },
+                        series: [{ name: 'ส่งงาน', data: {{ $chartDays['data']->toJson() }} }],
+                        xaxis: { categories: {{ $chartDays['labels']->toJson() }} },
+                        colors: ['#4f46e5'],
+                        plotOptions: { bar: { borderRadius: 6, columnWidth: '45%' } },
+                        dataLabels: { enabled: false },
+                        grid: { borderColor: 'rgba(148,163,184,0.2)' },
+                        tooltip: { theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light' }
+                    }).render()
+                 ">
+                <h2 class="font-semibold text-slate-800 dark:text-slate-100 mb-1">การส่งงาน 7 วันล่าสุด</h2>
+                <div x-ref="bar"></div>
+            </div>
+
+            {{-- donut --}}
+            <div class="card card-pad"
+                 x-data
+                 x-init="
+                    new ApexCharts($refs.donut, {
+                        chart: { type: 'donut', height: 280, fontFamily: 'inherit' },
+                        series: [{{ $stats['submissions'] - $stats['ungraded'] }}, {{ $stats['ungraded'] }}],
+                        labels: ['ตรวจแล้ว', 'รอตรวจ'],
+                        colors: ['#10b981', '#f59e0b'],
+                        legend: { position: 'bottom' },
+                        stroke: { width: 0 },
+                        plotOptions: { pie: { donut: { size: '68%' } } }
+                    }).render()
+                 ">
+                <h2 class="font-semibold text-slate-800 dark:text-slate-100 mb-1">สถานะการตรวจ</h2>
+                <div x-ref="donut"></div>
+            </div>
+        </div>
+
+        {{-- recent --}}
+        <div class="card mt-6 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                <x-icon name="clock" class="w-5 h-5 text-slate-400" />
+                <h2 class="font-semibold text-slate-800 dark:text-slate-100">การส่งงานล่าสุด</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <td class="px-5 py-2 font-medium text-slate-700">{{ $s->student?->student_code }}</td>
-                            <td class="px-5 py-2 text-slate-600">{{ $s->assignment?->subject?->code }} · {{ $s->assignment?->title }}</td>
-                            <td class="px-5 py-2 text-slate-400">{{ $s->submitted_at?->format('d/m/Y H:i') }}</td>
-                            <td class="px-5 py-2">
-                                @if ($s->score !== null)
-                                    <span class="text-emerald-600">ตรวจแล้ว</span>
-                                @else
-                                    <span class="text-amber-600">รอตรวจ</span>
-                                @endif
-                            </td>
+                            <th class="th">รหัสนักศึกษา</th>
+                            <th class="th">วิชา · งาน</th>
+                            <th class="th">เวลา</th>
+                            <th class="th">สถานะ</th>
                         </tr>
-                    @empty
-                        <tr><td colspan="4" class="px-5 py-6 text-center text-slate-400">ยังไม่มีการส่งงาน</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        @forelse ($recent as $s)
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                <td class="td font-medium text-slate-900 dark:text-white">{{ $s->student?->student_code }}</td>
+                                <td class="td">{{ $s->assignment?->subject?->code }} · {{ $s->assignment?->title }}</td>
+                                <td class="td text-slate-400">{{ $s->submitted_at?->format('d/m/Y H:i') }}</td>
+                                <td class="td">
+                                    @if ($s->score !== null)
+                                        <span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ตรวจแล้ว</span>
+                                    @else
+                                        <span class="badge-amber"><x-icon name="clock" class="w-3 h-3" /> รอตรวจ</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="td text-center text-slate-400 py-10">ยังไม่มีการส่งงาน</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </x-admin-shell>
 </div>

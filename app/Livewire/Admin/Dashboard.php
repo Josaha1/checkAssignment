@@ -7,6 +7,7 @@ use App\Models\Room;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 
 class Dashboard extends Component
@@ -22,10 +23,21 @@ class Dashboard extends Component
             'ungraded' => Submission::whereNull('score')->count(),
         ];
 
-        // งานล่าสุดที่ส่งเข้ามา
+        // กราฟแท่ง: การส่งงาน 7 วันล่าสุด
+        $days = collect(range(6, 0))->map(fn ($i) => Carbon::today()->subDays($i));
+        $perDay = Submission::whereNotNull('submitted_at')
+            ->where('submitted_at', '>=', Carbon::today()->subDays(6))
+            ->get()
+            ->groupBy(fn ($s) => $s->submitted_at->toDateString());
+
+        $chartDays = [
+            'labels' => $days->map(fn ($d) => $d->format('d/m'))->values(),
+            'data' => $days->map(fn ($d) => ($perDay[$d->toDateString()] ?? collect())->count())->values(),
+        ];
+
         $recent = Submission::with(['student', 'assignment.subject'])
             ->latest('submitted_at')->limit(8)->get();
 
-        return view('livewire.admin.dashboard', compact('stats', 'recent'));
+        return view('livewire.admin.dashboard', compact('stats', 'chartDays', 'recent'));
     }
 }

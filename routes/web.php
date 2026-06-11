@@ -20,6 +20,8 @@ Route::post('/student/logout', function () {
 
 Route::middleware('auth:student')->group(function () {
     Route::get('/student', Student\Dashboard::class)->name('student.dashboard');
+    Route::get('/student/subjects', Student\Subjects::class)->name('student.subjects');
+    Route::get('/student/history', Student\History::class)->name('student.history');
     Route::get('/student/assignment/{assignment}', Student\Submit::class)->name('student.submit');
 });
 
@@ -41,5 +43,8 @@ Route::middleware('auth:web')->prefix('admin')->group(function () {
     Route::get('/subjects/{subject}/assignments', Admin\Assignments::class)->name('admin.assignments');
     Route::get('/subjects/{subject}/enroll', Admin\Enroll::class)->name('admin.enroll');
     Route::get('/grading', Admin\Grading::class)->name('admin.grading');
+    Route::get('/submissions', Admin\SubmissionBoard::class)->name('admin.submissions');
+    Route::get('/reports', Admin\Reports::class)->name('admin.reports');
+    Route::get('/admins', Admin\Admins::class)->name('admin.admins');
     Route::get('/export/{subject}', [ExportController::class, 'csv'])->name('admin.export');
 });

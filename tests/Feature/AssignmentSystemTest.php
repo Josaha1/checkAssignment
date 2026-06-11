@@ -106,12 +106,13 @@ it('นักศึกษามองไม่เห็นคะแนนตั�
         'assignment_id' => $ctx['assignment']->id,
         'student_id' => $ctx['student']->id,
         'link' => 'https://drive.google.com/x',
-        'score' => 9.5, 'submitted_at' => now(), 'graded_at' => now(),
+        // ใช้ค่าที่เป็นไปไม่ได้ในพิกัด SVG icon (>24) กัน false-positive
+        'score' => 63.41, 'submitted_at' => now(), 'graded_at' => now(),
     ]);
 
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Dashboard::class)
-        ->assertDontSee('9.5')
+        ->assertDontSee('63.41')
         ->assertSee('ส่งแล้ว');
 });
 
