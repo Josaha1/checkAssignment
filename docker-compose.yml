@@ -1,0 +1,17 @@
+# ระบบส่งงานนักศึกษา — รันด้วยคำสั่งเดียว: docker compose up -d
+# ใช้ PHP 8.4 ใน container (เครื่อง host ไม่ต้องลง PHP) + SQLite ไฟล์เดียว
+services:
+  app:
+    image: serversideup/php:8.4-cli
+    working_dir: /app
+    user: "1000:1000"
+    entrypoint: ["sh", "-c"]
+    command: ["php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000"]
+    environment:
+      COMPOSER_HOME: /tmp
+      PHP_CLI_SERVER_WORKERS: "4"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
