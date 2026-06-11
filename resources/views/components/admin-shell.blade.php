@@ -22,14 +22,14 @@
     ];
 @endphp
 
-<div x-data="{ sidebar: false }" class="min-h-screen lg:flex">
+<div x-data="{ sidebar: false }">
     {{-- overlay มือถือ --}}
     <div x-show="sidebar" x-transition.opacity @click="sidebar=false"
          class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden" style="display:none"></div>
 
-    {{-- Sidebar --}}
-    <aside :class="sidebar ? 'translate-x-0' : '-translate-x-full'"
-           class="fixed lg:static inset-y-0 left-0 z-40 w-72 shrink-0 transform transition-transform lg:translate-x-0
+    {{-- Sidebar (fixed — กันพลาด layout collapse) --}}
+    <aside :class="{ 'translate-x-0': sidebar }"
+           class="fixed inset-y-0 left-0 z-40 w-72 transform -translate-x-full lg:translate-x-0 transition-transform
                   bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
         <div class="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800">
             <span class="grid place-items-center w-9 h-9 rounded-xl bg-brand-600 text-white">
@@ -66,8 +66,8 @@
         </nav>
     </div>
 
-    {{-- Main --}}
-    <div class="flex-1 min-w-0 flex flex-col">
+    {{-- Main — เว้นซ้าย 18rem ให้พ้น fixed sidebar บนจอใหญ่ --}}
+    <div class="lg:pl-72 flex flex-col">
         {{-- Topbar --}}
         <header class="sticky top-0 z-20 h-16 flex items-center gap-3 px-4 sm:px-6
                        bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
