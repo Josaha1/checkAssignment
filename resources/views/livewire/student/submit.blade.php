@@ -18,30 +18,57 @@
                     <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 p-4 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{{ $assignment->description }}</div>
                 @endif
 
+                {{-- ไฟล์ที่ส่งแล้ว --}}
+                @if ($submission && $submission->files->isNotEmpty())
+                    <div>
+                        <p class="label">ไฟล์ที่ส่งแล้ว ({{ $submission->files->count() }})</p>
+                        <div class="space-y-2">
+                            @foreach ($submission->files as $f)
+                                <div class="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2">
+                                    <x-icon name="clipboard" class="w-4 h-4 text-slate-400 shrink-0" />
+                                    <a href="{{ $f->url }}" target="_blank" rel="noopener" class="flex-1 text-sm text-slate-700 dark:text-slate-200 truncate hover:text-brand-600">{{ $f->name }}</a>
+                                    @if (! $submission->score)
+                                        <button wire:click="removeFile({{ $f->id }})" wire:confirm="ลบไฟล์นี้?" class="text-rose-500 hover:text-rose-600 shrink-0"><x-icon name="trash" class="w-4 h-4" /></button>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
                 @if ($submission && $submission->score !== null)
                     <div class="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-                        <x-icon name="alert" class="w-5 h-5 shrink-0" /> งานนี้ถูกตรวจแล้ว ไม่สามารถแก้ไขลิงก์ได้
+                        <x-icon name="alert" class="w-5 h-5 shrink-0" /> งานนี้ถูกตรวจแล้ว ไม่สามารถแก้ไขไฟล์ได้
                     </div>
                 @else
                     <form wire:submit="save" class="space-y-3">
                         <div>
-                            <label class="label">ลิงก์งาน (Google Drive / ออนไลน์)</label>
-                            <div class="relative">
-                                <x-icon name="link" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="url" wire:model="link" placeholder="https://drive.google.com/..." class="input pl-9">
-                            </div>
-                            @error('link') <p class="mt-1 flex items-center gap-1.5 text-sm text-rose-600"><x-icon name="alert" class="w-4 h-4" /> {{ $message }}</p> @enderror
-                            @if ($submission)
-                                <p class="text-xs text-emerald-600 mt-1.5 flex items-center gap-1"><x-icon name="check" class="w-3 h-3" /> เคยส่งแล้ว — บันทึกใหม่เพื่อแก้ลิงก์เดิม</p>
-                            @endif
+                            <label class="label">{{ $submission?->files->isNotEmpty() ? 'แนบไฟล์เพิ่ม' : 'แนบไฟล์งาน' }}</label>
+                            <input type="file" wire:model="uploads" multiple
+                                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
+                                   class="block w-full text-sm text-slate-600 dark:text-slate-300 file:mr-3 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:font-medium dark:file:bg-brand-500/15 dark:file:text-brand-300">
+                            <p class="text-xs text-slate-400 mt-1.5">รองรับ pdf, word, ppt, excel, รูป, zip · ไม่เกิน 20MB/ไฟล์ · สูงสุด 10 ไฟล์</p>
+                            @error('uploads') <p class="mt-1 flex items-center gap-1.5 text-sm text-rose-600"><x-icon name="alert" class="w-4 h-4" /> {{ $message }}</p> @enderror
+                            @error('uploads.*') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
                         </div>
-                        <button type="submit" class="btn-primary w-full">
-                            <x-icon name="send" class="w-4 h-4" /> {{ $submission ? 'อัปเดตลิงก์' : 'ส่งงาน' }}
+
+                        {{-- preview ไฟล์ที่เลือก --}}
+                        <div wire:loading wire:target="uploads" class="text-sm text-slate-400">กำลังเตรียมไฟล์...</div>
+                        @if ($uploads)
+                            <div class="space-y-1.5">
+                                @foreach ($uploads as $u)
+                                    <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                        <x-icon name="check" class="w-4 h-4 text-emerald-500" /> {{ $u->getClientOriginalName() }}
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <button type="submit" class="btn-primary w-full" wire:loading.attr="disabled" wire:target="save,uploads">
+                            <span wire:loading.remove wire:target="save"><x-icon name="upload" class="w-4 h-4" /> ส่งงาน</span>
+                            <span wire:loading wire:target="save">กำลังอัปโหลดขึ้น Drive...</span>
                         </button>
                     </form>
-                    <p class="text-xs text-slate-400 text-center flex items-center justify-center gap-1">
-                        <x-icon name="alert" class="w-3 h-3" /> ตรวจสอบให้ลิงก์เปิดดูได้ (แชร์เป็น "ทุกคนที่มีลิงก์")
-                    </p>
                 @endif
             </div>
         </div>

@@ -44,7 +44,7 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
-                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-สกุล</th><th class="th">ห้อง</th><th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ลิงก์</th></tr>
+                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-สกุล</th><th class="th">ห้อง</th><th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์</th></tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @foreach ($rows as $row)
@@ -61,8 +61,12 @@
                                     </td>
                                     <td class="td text-slate-400">{{ $row['submission']?->submitted_at?->format('d/m/Y H:i') ?? '—' }}</td>
                                     <td class="td">
-                                        @if ($row['submission'])
-                                            <a href="{{ $row['submission']->link }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline"><x-icon name="external" class="w-4 h-4" /> เปิด</a>
+                                        @if ($row['submission'] && $row['submission']->files->isNotEmpty())
+                                            <div class="flex flex-col gap-0.5">
+                                                @foreach ($row['submission']->files as $f)
+                                                    <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[200px] truncate"><x-icon name="external" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
+                                                @endforeach
+                                            </div>
                                         @else — @endif
                                     </td>
                                 </tr>

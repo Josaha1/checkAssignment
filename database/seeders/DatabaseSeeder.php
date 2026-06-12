@@ -49,15 +49,23 @@ class DatabaseSeeder extends Seeder
             $s->subjects()->syncWithoutDetaching([$web->id, $db->id]);
         }
 
-        // ตัวอย่างการส่งงาน
+        // ตัวอย่างการส่งงาน (พร้อมไฟล์ตัวอย่าง)
         $first = Student::where('student_code', '670012345')->first();
-        Submission::updateOrCreate(
+        $s1 = Submission::updateOrCreate(
             ['assignment_id' => $a1->id, 'student_id' => $first->id],
-            ['link' => 'https://drive.google.com/example1', 'submitted_at' => now()],
+            ['submitted_at' => now()],
         );
-        Submission::updateOrCreate(
+        \App\Models\SubmissionFile::updateOrCreate(
+            ['submission_id' => $s1->id, 'name' => 'portfolio.pdf'],
+            ['drive_file_id' => 'demo1', 'url' => 'https://drive.google.com/file/d/demo1/view', 'mime' => 'application/pdf', 'size' => 102400],
+        );
+        $s2 = Submission::updateOrCreate(
             ['assignment_id' => $a2->id, 'student_id' => $first->id],
-            ['link' => 'https://drive.google.com/example2', 'submitted_at' => now(), 'score' => 18, 'graded_at' => now()],
+            ['submitted_at' => now(), 'score' => 18, 'graded_at' => now()],
+        );
+        \App\Models\SubmissionFile::updateOrCreate(
+            ['submission_id' => $s2->id, 'name' => 'game.zip'],
+            ['drive_file_id' => 'demo2', 'url' => 'https://drive.google.com/file/d/demo2/view', 'mime' => 'application/zip', 'size' => 204800],
         );
     }
 }

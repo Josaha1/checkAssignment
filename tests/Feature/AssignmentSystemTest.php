@@ -10,10 +10,19 @@ use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
 use App\Models\User;
+use App\Contracts\DriveStorage;
+use App\Services\FakeDriveStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+function fakeDrive(): FakeDriveStorage
+{
+    $fake = new FakeDriveStorage();
+    app()->instance(DriveStorage::class, $fake);
+    return $fake;
+}
 
 function makeStudentWithSubject(): array
 {
@@ -67,37 +76,55 @@ it('dashboard แสดงงานที่ยังไม่ส่ง', functi
         ->assertViewHas('pendingTotal', 1);
 });
 
-it('นักศึกษาส่งงานด้วยลิงก์ และส่งซ้ำไม่ได้ถ้าให้คะแนนแล้ว', function () {
+it('นักศึกษาแนบไฟล์ขึ้น Drive และส่งซ้ำไม่ได้ถ้าให้คะแนนแล้ว', function () {
     $ctx = makeStudentWithSubject();
+    $fake = fakeDrive();
 
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
-        ->set('link', 'https://drive.google.com/abc')
+        ->set('uploads', [
+            \Illuminate\Http\UploadedFile::fake()->create('a.pdf', 50, 'application/pdf'),
+            \Illuminate\Http\UploadedFile::fake()->create('b.docx', 50, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        ])
         ->call('save')
         ->assertHasNoErrors();
 
-    $sub = Submission::first();
-    expect($sub->link)->toBe('https://drive.google.com/abc');
+    $sub = Submission::with('files')->first();
+    expect($sub->files)->toHaveCount(2);
+    // โครงสร้างโฟลเดอร์ วิชา/ห้อง/งาน/รหัสนศ.
+    expect($fake->paths[0])->toContain('T-001')->toContain('ปวส.1/1')->toContain('งานทดสอบ')->toContain('670099999');
 
-    // ให้คะแนนแล้ว → แก้ลิงก์ไม่ได้
+    // ให้คะแนนแล้ว → แนบเพิ่มไม่ได้
     $sub->update(['score' => 8, 'graded_at' => now()]);
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
-        ->set('link', 'https://drive.google.com/changed')
+        ->set('uploads', [\Illuminate\Http\UploadedFile::fake()->create('c.pdf', 50, 'application/pdf')])
         ->call('save')
-        ->assertHasErrors('link');
+        ->assertHasErrors('uploads');
 
-    expect(Submission::first()->link)->toBe('https://drive.google.com/abc');
+    expect(Submission::first()->files()->count())->toBe(2);
 });
 
-it('ส่งลิงก์ที่ไม่ใช่ URL ถูกปฏิเสธ', function () {
+it('แนบไฟล์ชนิดไม่อนุญาตถูกปฏิเสธ', function () {
     $ctx = makeStudentWithSubject();
+    fakeDrive();
 
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
-        ->set('link', 'ไม่ใช่ลิงก์')
+        ->set('uploads', [\Illuminate\Http\UploadedFile::fake()->create('evil.exe', 50, 'application/x-msdownload')])
         ->call('save')
-        ->assertHasErrors('link');
+        ->assertHasErrors('uploads.*');
+});
+
+it('ส่งงานไม่ได้ถ้ายังไม่เชื่อม Drive', function () {
+    $ctx = makeStudentWithSubject();
+    // ไม่ผูก FakeDrive → ใช้ GoogleDriveService จริงที่ยังไม่เชื่อม (isConnected=false)
+
+    Livewire::actingAs($ctx['student'], 'student')
+        ->test(Submit::class, ['assignment' => $ctx['assignment']])
+        ->set('uploads', [\Illuminate\Http\UploadedFile::fake()->create('a.pdf', 50, 'application/pdf')])
+        ->call('save')
+        ->assertHasErrors('uploads');
 });
 
 it('นักศึกษามองไม่เห็นคะแนนตัวเองในหน้า dashboard', function () {

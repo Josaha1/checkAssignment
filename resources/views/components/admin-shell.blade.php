@@ -18,6 +18,7 @@
         ],
         'ระบบ' => [
             ['admin.admins', 'อาจารย์ / ผู้ดูแล', 'user-cog'],
+            ['admin.drive', 'เชื่อมต่อ Drive', 'link'],
         ],
     ];
 @endphp

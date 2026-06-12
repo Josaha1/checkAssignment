@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Admin;
 
+use App\Contracts\DriveStorage;
 use App\Models\Assignment;
+use App\Models\Student;
 use App\Models\Subject;
 use Livewire\Component;
 
@@ -57,6 +59,31 @@ class Assignments extends Component
     {
         Assignment::where('subject_id', $this->subject->id)->findOrFail($id)->delete();
         session()->flash('ok', 'ลบชิ้นงานแล้ว');
+    }
+
+    // สร้างโฟลเดอร์ วิชา/ห้อง/งาน ล่วงหน้าบน Drive (ทุกห้องที่มีนักศึกษาลงทะเบียนวิชานี้)
+    public function prepareFolders(int $id): void
+    {
+        $assignment = Assignment::where('subject_id', $this->subject->id)->findOrFail($id);
+        $drive = app(DriveStorage::class);
+        if (! $drive->isConnected()) {
+            session()->flash('ok', 'ยังไม่ได้เชื่อมต่อ Google Drive');
+            return;
+        }
+
+        $rooms = Student::whereHas('subjects', fn ($q) => $q->whereKey($this->subject->id))
+            ->with('room')->get()->pluck('room.name')->filter()->unique();
+
+        $count = 0;
+        foreach ($rooms as $roomName) {
+            $drive->ensureFolderPath([
+                trim($this->subject->code . ' ' . $this->subject->name),
+                trim($roomName),
+                trim($assignment->title),
+            ]);
+            $count++;
+        }
+        session()->flash('ok', "สร้างโฟลเดอร์งานนี้บน Drive แล้ว ({$count} ห้อง)");
     }
 
     public function render()

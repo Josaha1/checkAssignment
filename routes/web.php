@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\GoogleDriveController;
 use App\Livewire\Admin;
 use App\Livewire\Student;
 use Illuminate\Support\Facades\Auth;
@@ -46,5 +47,9 @@ Route::middleware('auth:web')->prefix('admin')->group(function () {
     Route::get('/submissions', Admin\SubmissionBoard::class)->name('admin.submissions');
     Route::get('/reports', Admin\Reports::class)->name('admin.reports');
     Route::get('/admins', Admin\Admins::class)->name('admin.admins');
+    Route::get('/drive', Admin\DriveSettings::class)->name('admin.drive');
+    Route::get('/google/connect', [GoogleDriveController::class, 'connect'])->name('admin.google.connect');
+    Route::get('/google/callback', [GoogleDriveController::class, 'callback'])->name('admin.google.callback');
+    Route::post('/google/disconnect', [GoogleDriveController::class, 'disconnect'])->name('admin.google.disconnect');
     Route::get('/export/{subject}', [ExportController::class, 'csv'])->name('admin.export');
 });

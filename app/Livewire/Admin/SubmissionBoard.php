@@ -38,7 +38,8 @@ class SubmissionBoard extends Component
                 ->when($this->roomId, fn ($q) => $q->where('room_id', $this->roomId))
                 ->orderBy('student_code')->get();
 
-            $subs = Submission::where('assignment_id', $this->assignmentId)
+            $subs = Submission::with('files')
+                ->where('assignment_id', $this->assignmentId)
                 ->whereIn('student_id', $students->pluck('id'))->get()->keyBy('student_id');
 
             $rows = $students->map(fn ($st) => [

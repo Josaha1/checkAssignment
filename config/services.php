@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'google_drive' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', env('APP_URL') . '/admin/google/callback'),
+        'root_folder_name' => env('GOOGLE_DRIVE_ROOT', 'ระบบส่งงานนักศึกษา'),
+    ],
+
 ];

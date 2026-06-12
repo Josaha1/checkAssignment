@@ -50,9 +50,13 @@
                                         <td class="px-3 py-3 text-center align-top">
                                             @if ($sub)
                                                 <div class="flex flex-col items-center gap-1.5">
-                                                    <a href="{{ $sub->link }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline">
-                                                        <x-icon name="external" class="w-3 h-3" /> ลิงก์
-                                                    </a>
+                                                    @forelse ($sub->files as $f)
+                                                        <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline max-w-[120px] truncate">
+                                                            <x-icon name="external" class="w-3 h-3 shrink-0" /> <span class="truncate">{{ $f->name }}</span>
+                                                        </a>
+                                                    @empty
+                                                        <span class="text-[10px] text-slate-400">ไม่มีไฟล์</span>
+                                                    @endforelse
                                                     <input type="number" step="0.01" min="0" max="{{ $a->max_score }}"
                                                            wire:model="scores.{{ $sub->id }}"
                                                            class="input !w-20 text-center !py-1.5">

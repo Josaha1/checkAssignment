@@ -54,7 +54,8 @@ class Grading extends Component
                 ->when($this->roomId, fn ($q) => $q->where('room_id', $this->roomId))
                 ->orderBy('student_code')->get();
 
-            $subs = Submission::whereIn('assignment_id', $assignments->pluck('id'))
+            $subs = Submission::with('files')
+                ->whereIn('assignment_id', $assignments->pluck('id'))
                 ->whereIn('student_id', $students->pluck('id'))->get();
 
             foreach ($subs as $sub) {

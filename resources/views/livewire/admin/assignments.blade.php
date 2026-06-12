@@ -60,6 +60,7 @@
                         </div>
                         <div class="flex flex-col gap-1.5 shrink-0">
                             <button wire:click="edit({{ $a->id }})" class="btn-ghost btn-sm"><x-icon name="pencil" class="w-4 h-4" /></button>
+                            <button wire:click="prepareFolders({{ $a->id }})" class="btn-ghost btn-sm" title="เตรียมโฟลเดอร์บน Drive"><x-icon name="link" class="w-4 h-4" /></button>
                             <button wire:click="delete({{ $a->id }})" wire:confirm="ลบงานนี้?" class="btn-danger btn-sm"><x-icon name="trash" class="w-4 h-4" /></button>
                         </div>
                     </div>

@@ -34,6 +34,14 @@
 4. Create → Render จะ build Docker, รัน `migrate --seed` อัตโนมัติตอนบูต
 5. เปิด `https://<service>.onrender.com/admin/login` → `admin@example.com` / `password`
 
+### เชื่อม Google Drive (สำหรับอัปไฟล์งาน)
+
+1. Google Cloud Console → เปิด **Google Drive API** + สร้าง **OAuth Client (Web)**
+2. Authorized redirect URI: `https://<service>.onrender.com/admin/google/callback`
+3. ตั้ง env เพิ่มใน Render: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+4. (Workspace) ตั้ง OAuth consent เป็น **Internal** → token ไม่หมดอายุ ไม่ต้อง verify
+5. ในเว็บ → `/admin/drive` → กด "เชื่อมต่อ Google Drive" แล้ว login บัญชีมหาลัย (1TB)
+
 > ครั้งแรกที่เข้าเว็บหลังหลับ จะรอ ~30–60 วิ (cold start) — แก้ด้วยข้อ 3
 
 ## 3) หน้า "รอปลุก" (wake) — โฮสต์ฟรีแยก

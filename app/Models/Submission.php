@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Submission extends Model
 {
@@ -16,6 +17,11 @@ class Submission extends Model
         'graded_at' => 'datetime',
         'score' => 'decimal:2',
     ];
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(SubmissionFile::class);
+    }
 
     public function assignment(): BelongsTo
     {

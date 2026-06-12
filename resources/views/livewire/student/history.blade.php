@@ -4,7 +4,7 @@
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead class="bg-slate-50 dark:bg-slate-800/50">
-                        <tr><th class="th">วิชา · งาน</th><th class="th">ส่งเมื่อ</th><th class="th">ลิงก์</th><th class="th">สถานะ</th></tr>
+                        <tr><th class="th">วิชา · งาน</th><th class="th">ส่งเมื่อ</th><th class="th">ไฟล์</th><th class="th">สถานะ</th></tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         @forelse ($submissions as $s)
@@ -15,7 +15,13 @@
                                 </td>
                                 <td class="td text-slate-500">{{ $s->submitted_at?->format('d/m/Y H:i') ?? '—' }}</td>
                                 <td class="td">
-                                    <a href="{{ $s->link }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline"><x-icon name="external" class="w-4 h-4" /> เปิด</a>
+                                    @if ($s->files->isNotEmpty())
+                                        <div class="flex flex-col gap-0.5">
+                                            @foreach ($s->files as $f)
+                                                <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[220px] truncate"><x-icon name="external" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
+                                            @endforeach
+                                        </div>
+                                    @else <span class="text-slate-400">—</span> @endif
                                 </td>
                                 <td class="td"><span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span></td>
                             </tr>
