@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>กำลังเปิดระบบส่งงานนักศึกษา…</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --brand:#4f46e5; --brand2:#7c3aed; }
+  * { box-sizing:border-box; margin:0; }
+  body {
+    min-height:100vh; display:grid; place-items:center; padding:24px;
+    font-family:"Noto Sans Thai",system-ui,sans-serif; color:#fff;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));
+  }
+  .card {
+    width:100%; max-width:420px; text-align:center;
+    background:rgba(255,255,255,.10); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.18); border-radius:24px; padding:40px 28px;
+  }
+  .logo { width:64px;height:64px;margin:0 auto 20px;border-radius:18px;
+    background:rgba(255,255,255,.18); display:grid;place-items:center;font-size:30px; }
+  h1 { font-size:20px; font-weight:700; }
+  p  { margin-top:8px; font-size:14px; color:#e0e7ff; line-height:1.6; }
+  .spinner { width:48px;height:48px;margin:26px auto 8px;border-radius:50%;
+    border:4px solid rgba(255,255,255,.25); border-top-color:#fff; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .bar { height:6px;margin-top:22px;border-radius:99px;background:rgba(255,255,255,.2);overflow:hidden; }
+  .bar > i { display:block;height:100%;width:35%;border-radius:99px;background:#fff;
+    animation:slide 1.4s ease-in-out infinite; }
+  @keyframes slide { 0%{margin-left:-35%} 100%{margin-left:100%} }
+  .meta { margin-top:16px;font-size:12px;color:#c7d2fe; }
+  .retry { margin-top:18px;display:none; }
+  .retry a { color:#fff;text-decoration:underline;font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🎓</div>
+    <h1>กำลังเปิดระบบส่งงานนักศึกษา</h1>
+    <p>เซิร์ฟเวอร์กำลังตื่นจากโหมดประหยัดพลังงาน<br>ครั้งแรกอาจใช้เวลา ~30–60 วินาที กรุณารอสักครู่</p>
+    <div class="spinner"></div>
+    <div class="bar"><i></i></div>
+    <div class="meta">ผ่านไป <b id="t">0</b> วินาที · พยายามครั้งที่ <b id="n">1</b></div>
+    <div class="retry" id="retry"><a href="#" onclick="location.reload();return false">ใช้เวลานานผิดปกติ — ลองใหม่</a></div>
+  </div>
+
+<script>
+  // ====== ตั้งค่าเดียวที่ต้องแก้: URL ของแอปบน Render ======
+  const APP_URL = "https://YOUR-APP.onrender.com";
+  // ========================================================
+
+  const tEl = document.getElementById('t');
+  const nEl = document.getElementById('n');
+  const retry = document.getElementById('retry');
+  let start = Date.now(), attempt = 0, done = false;
+
+  setInterval(() => {
+    const s = Math.floor((Date.now() - start) / 1000);
+    tEl.textContent = s;
+    if (s > 90) retry.style.display = 'block'; // เผื่อกรณีผิดปกติ
+  }, 1000);
+
+  // ping ด้วย <img> ไม่ต้องใช้ CORS — Render ค้าง request จนแอปตื่นแล้วตอบ → onload/onerror ยิง
+  function ping() {
+    if (done) return;
+    attempt++; nEl.textContent = attempt;
+    const img = new Image();
+    let settled = false;
+    const finish = () => {
+      if (settled || done) return; settled = true; done = true;
+      location.href = APP_URL; // ตื่นแล้ว → เข้าเว็บจริง
+    };
+    img.onload = finish;
+    img.onerror = finish; // 404/ไม่ใช่รูปก็ถือว่าเซิร์ฟเวอร์ตอบแล้ว = ตื่น
+    img.src = APP_URL + "/up?ping=" + Date.now();
+    // ถ้าครั้งนี้ไม่ตอบใน 20 วิ ลองยิงใหม่ (ช่วยกระตุ้นให้ตื่น)
+    setTimeout(() => { if (!settled && !done) ping(); }, 20000);
+  }
+  ping();
+</script>
+</body>
+</html>

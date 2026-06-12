@@ -1,0 +1,48 @@
+# Render Blueprint — deploy ฟรี (web service) + ใช้ Neon Postgres ฟรีเป็น DB
+# ขั้นตอน: New → Blueprint → เลือก repo นี้ แล้วกรอกค่า sync:false ในหน้า Render
+services:
+  - type: web
+    name: checkassignment
+    runtime: docker
+    plan: free
+    region: singapore          # ใกล้ไทยสุด
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: "ระบบส่งงานนักศึกษา"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_LOCALE
+        value: th
+      - key: APP_TIMEZONE
+        value: Asia/Bangkok
+      - key: APP_KEY            # สร้างด้วย: php artisan key:generate --show
+        sync: false
+      - key: APP_URL            # https://<service>.onrender.com
+        sync: false
+      - key: LOG_CHANNEL
+        value: stderr           # ให้ log ไปโผล่ใน Render Logs
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync             # ไม่ต้องมี worker แยก
+      # ----- Neon Postgres (กรอกจาก Neon dashboard) -----
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST            # เช่น ep-xxx.ap-southeast-1.aws.neon.tech
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require          # Neon บังคับ SSL
