@@ -20,10 +20,12 @@
 
                     <div class="border-t border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
                         @forelse ($row['assignments'] as $a)
-                            @php $sent = in_array($a->id, $row['submittedIds']); @endphp
+                            @php $sub = $subs[$a->id] ?? null; @endphp
                             <div class="px-5 py-2.5 flex items-center justify-between gap-2">
-                                <span class="text-sm text-slate-700 dark:text-slate-300 truncate {{ $sent ? 'line-through text-slate-400' : '' }}">{{ $a->title }}</span>
-                                @if ($sent)
+                                <span class="text-sm text-slate-700 dark:text-slate-300 truncate {{ $sub ? 'line-through text-slate-400' : '' }}">{{ $a->title }}</span>
+                                @if ($sub && $sub->isGraded())
+                                    <span class="badge-blue shrink-0"><x-icon name="circle-check" class="w-3 h-3" /> ตรวจแล้ว</span>
+                                @elseif ($sub)
                                     <span class="badge-green shrink-0"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
                                 @else
                                     <a href="{{ route('student.submit', $a) }}" wire:navigate class="badge-amber shrink-0 hover:bg-amber-200 dark:hover:bg-amber-500/25"><x-icon name="send" class="w-3 h-3" /> ส่งงาน</a>

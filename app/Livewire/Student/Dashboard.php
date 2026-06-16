@@ -12,7 +12,8 @@ class Dashboard extends Component
         $student = Auth::guard('student')->user()
             ->load(['subjects.assignments', 'submissions']);
 
-        $submittedIds = $student->submissions->pluck('assignment_id')->all();
+        $subs = $student->submissions->keyBy('assignment_id'); // ใช้แยกสถานะ ส่งแล้ว/ตรวจแล้ว
+        $submittedIds = $subs->keys()->all();
 
         // จัดกลุ่มตามวิชา — แยกงานที่ยังไม่ส่ง / ส่งแล้ว (ไม่โชว์คะแนน)
         $subjects = $student->subjects->map(function ($subject) use ($submittedIds) {
@@ -28,6 +29,7 @@ class Dashboard extends Component
         return view('livewire.student.dashboard', [
             'student' => $student,
             'subjects' => $subjects,
+            'subs' => $subs,
             'pendingTotal' => $subjects->sum(fn ($s) => $s['pending']->count()),
         ]);
     }

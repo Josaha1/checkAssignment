@@ -37,9 +37,14 @@
                     @endforeach
 
                     @foreach ($row['done'] as $a)
+                        @php $sub = $subs[$a->id] ?? null; @endphp
                         <div class="px-5 py-3 flex items-center justify-between gap-3 opacity-70">
                             <p class="text-slate-500 dark:text-slate-400 line-through truncate">{{ $a->title }}</p>
-                            <span class="badge-green shrink-0"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
+                            @if ($sub && $sub->isGraded())
+                                <span class="badge-blue shrink-0"><x-icon name="circle-check" class="w-3 h-3" /> ตรวจแล้ว</span>
+                            @else
+                                <span class="badge-green shrink-0"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
+                            @endif
                         </div>
                     @endforeach
 

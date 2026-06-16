@@ -140,7 +140,35 @@ it('นักศึกษามองไม่เห็นคะแนนตั�
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Dashboard::class)
         ->assertDontSee('63.41')
-        ->assertSee('ส่งแล้ว');
+        ->assertSee('ตรวจแล้ว');
+});
+
+it('งานที่ตรวจแล้วขึ้นสถานะ "ตรวจแล้ว" โดยไม่โชว์คะแนน', function () {
+    $ctx = makeStudentWithSubject();
+    Submission::create([
+        'assignment_id' => $ctx['assignment']->id,
+        'student_id' => $ctx['student']->id,
+        'score' => 8, 'submitted_at' => now(), 'graded_at' => now(),
+    ]);
+
+    Livewire::actingAs($ctx['student'], 'student')
+        ->test(Dashboard::class)
+        ->assertSee('ตรวจแล้ว')
+        ->assertDontSee('8.00');
+});
+
+it('งานที่ส่งแล้วแต่ยังไม่ตรวจขึ้นสถานะ "ส่งแล้ว"', function () {
+    $ctx = makeStudentWithSubject();
+    Submission::create([
+        'assignment_id' => $ctx['assignment']->id,
+        'student_id' => $ctx['student']->id,
+        'submitted_at' => now(), // score null = ยังไม่ตรวจ
+    ]);
+
+    Livewire::actingAs($ctx['student'], 'student')
+        ->test(Dashboard::class)
+        ->assertSee('ส่งแล้ว')
+        ->assertDontSee('ตรวจแล้ว');
 });
 
 it('แอดมินให้คะแนนผ่านหน้า grading แล้วบันทึก', function () {

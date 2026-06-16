@@ -10,7 +10,8 @@ class Subjects extends Component
     public function render()
     {
         $student = Auth::guard('student')->user()->load(['subjects.assignments', 'submissions']);
-        $submittedIds = $student->submissions->pluck('assignment_id')->all();
+        $subs = $student->submissions->keyBy('assignment_id'); // ใช้เช็คสถานะ ส่งแล้ว/ตรวจแล้ว ราย assignment
+        $submittedIds = $subs->keys()->all();
 
         $subjects = $student->subjects->map(function ($subject) use ($submittedIds) {
             $total = $subject->assignments->count();
@@ -18,13 +19,12 @@ class Subjects extends Component
             return [
                 'subject' => $subject,
                 'assignments' => $subject->assignments,
-                'submittedIds' => $submittedIds,
                 'total' => $total,
                 'done' => $done,
                 'percent' => $total > 0 ? round($done / $total * 100) : 0,
             ];
         });
 
-        return view('livewire.student.subjects', compact('subjects'));
+        return view('livewire.student.subjects', compact('subjects', 'subs'));
     }
 }

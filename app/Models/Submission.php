@@ -18,6 +18,12 @@ class Submission extends Model
         'score' => 'decimal:2',
     ];
 
+    // ตรวจแล้ว = มีคะแนน (score ไม่ null) — ใช้แยกสถานะ "ตรวจแล้ว" จาก "ส่งแล้ว"
+    public function isGraded(): bool
+    {
+        return $this->score !== null;
+    }
+
     public function files(): HasMany
     {
         return $this->hasMany(SubmissionFile::class);

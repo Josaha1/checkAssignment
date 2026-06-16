@@ -23,7 +23,13 @@
                                         </div>
                                     @else <span class="text-slate-400">—</span> @endif
                                 </td>
-                                <td class="td"><span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span></td>
+                                <td class="td">
+                                    @if ($s->isGraded())
+                                        <span class="badge-blue"><x-icon name="circle-check" class="w-3 h-3" /> ตรวจแล้ว</span>
+                                    @else
+                                        <span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="td text-center text-slate-400 py-12">
