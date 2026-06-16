@@ -29,5 +29,5 @@ RUN composer dump-autoload --optimize --no-dev 2>/dev/null || true \
 USER www-data
 ENV PORT=10000
 
-# migrate (idempotent) + seed (idempotent) แล้วเปิดเว็บที่ $PORT ของ Render
-CMD ["sh", "-c", "php artisan config:clear && php artisan migrate --force --seed && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
+# ⚠️ ชั่วคราว: migrate:fresh เคลียร์ + apply schema ใหม่ครั้งเดียว — ต้อง revert กลับเป็น migrate หลัง import เสร็จ
+CMD ["sh", "-c", "php artisan config:clear && php artisan migrate:fresh --force --seed && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
