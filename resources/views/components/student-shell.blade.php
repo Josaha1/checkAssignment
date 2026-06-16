@@ -16,7 +16,7 @@
                 <span class="grid place-items-center w-9 h-9 rounded-xl bg-brand-600 text-white"><x-icon name="cap" class="w-5 h-5" /></span>
                 <div class="leading-tight">
                     <p class="font-bold text-slate-900 dark:text-white text-sm">{{ $student->full_name }}</p>
-                    <p class="text-[11px] text-slate-400">{{ $student->student_code }} · {{ $student->room?->name ?? '—' }}</p>
+                    <p class="text-[11px] text-slate-400">{{ $student->student_code }} · {{ $student->study_group ?? '—' }}</p>
                 </div>
 
                 <div class="ml-auto flex items-center gap-2">

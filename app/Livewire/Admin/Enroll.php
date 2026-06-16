@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Room;
 use App\Models\Student;
 use App\Models\Subject;
 use Livewire\Component;
@@ -10,7 +9,7 @@ use Livewire\Component;
 class Enroll extends Component
 {
     public Subject $subject;
-    public ?int $roomFilter = null;
+    public ?string $groupFilter = null;
     public array $enrolled = []; // student_id => true
 
     public function mount(Subject $subject): void
@@ -31,28 +30,28 @@ class Enroll extends Component
         }
     }
 
-    public function enrollRoom(): void
+    public function enrollGroup(): void
     {
-        if (! $this->roomFilter) {
+        if (! $this->groupFilter) {
             return;
         }
-        $ids = Student::where('room_id', $this->roomFilter)->pluck('id')->all();
+        $ids = Student::where('study_group', $this->groupFilter)->pluck('id')->all();
         $this->subject->students()->syncWithoutDetaching($ids);
         foreach ($ids as $id) {
             $this->enrolled[$id] = true;
         }
-        session()->flash('ok', 'ลงทะเบียนทั้งห้องเรียบร้อย');
+        session()->flash('ok', 'ลงทะเบียนทั้งกลุ่มเรียบร้อย');
     }
 
     public function render()
     {
-        $students = Student::with('room')
-            ->when($this->roomFilter, fn ($q) => $q->where('room_id', $this->roomFilter))
+        $students = Student::query()
+            ->when($this->groupFilter, fn ($q) => $q->where('study_group', $this->groupFilter))
             ->orderBy('student_code')->get();
 
         return view('livewire.admin.enroll', [
             'students' => $students,
-            'rooms' => Room::orderBy('name')->get(),
+            'groups' => Student::whereNotNull('study_group')->distinct()->orderBy('study_group')->pluck('study_group'),
             'enrolledCount' => count($this->enrolled),
         ]);
     }

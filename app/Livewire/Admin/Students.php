@@ -2,13 +2,13 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Room;
 use App\Models\Student;
-use Carbon\Carbon;
+use App\Models\Subject;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class Students extends Component
 {
@@ -16,12 +16,16 @@ class Students extends Component
 
     public string $student_code = '';
     public string $full_name = '';
-    public string $birthdate = '';
-    public ?int $room_id = null;
+    public string $email = '';
+    public string $password = '';
+    public string $faculty = '';
+    public string $major = '';
+    public string $program = '';
+    public string $study_group = '';
     public ?int $editingId = null;
 
     public string $search = '';
-    public $csv; // ไฟล์อัปโหลด
+    public $file; // ไฟล์ xlsx อัปโหลด
     public array $importResult = [];
 
     public function save(): void
@@ -30,11 +34,24 @@ class Students extends Component
             'student_code' => ['required', 'string', 'max:50',
                 'unique:students,student_code' . ($this->editingId ? ',' . $this->editingId : '')],
             'full_name' => ['required', 'string', 'max:150'],
-            'birthdate' => ['required', 'date'],
-            'room_id' => ['nullable', 'exists:rooms,id'],
+            'email' => ['required', 'email', 'max:150',
+                'unique:students,email' . ($this->editingId ? ',' . $this->editingId : '')],
+            'password' => [$this->editingId ? 'nullable' : 'nullable', 'string', 'min:6'],
+            'faculty' => ['nullable', 'string', 'max:150'],
+            'major' => ['nullable', 'string', 'max:150'],
+            'program' => ['nullable', 'string', 'max:150'],
+            'study_group' => ['nullable', 'string', 'max:50'],
         ], attributes: [
-            'student_code' => 'รหัสนักศึกษา', 'full_name' => 'ชื่อ-สกุล', 'birthdate' => 'วันเกิด',
+            'student_code' => 'รหัสนักศึกษา', 'full_name' => 'ชื่อ-นามสกุล', 'email' => 'อีเมล',
         ]);
+
+        // รหัสผ่านว่าง: ตอนเพิ่มใหม่ตั้งต้น = รหัสนักศึกษา, ตอนแก้ไขคงรหัสเดิม
+        if (($data['password'] ?? '') === '') {
+            unset($data['password']);
+            if (! $this->editingId) {
+                $data['password'] = $this->student_code;
+            }
+        }
 
         Student::updateOrCreate(['id' => $this->editingId], $data);
         $this->cancel();
@@ -47,13 +64,18 @@ class Students extends Component
         $this->editingId = $s->id;
         $this->student_code = $s->student_code;
         $this->full_name = $s->full_name;
-        $this->birthdate = $s->birthdate->format('Y-m-d');
-        $this->room_id = $s->room_id;
+        $this->email = $s->email;
+        $this->password = '';
+        $this->faculty = $s->faculty ?? '';
+        $this->major = $s->major ?? '';
+        $this->program = $s->program ?? '';
+        $this->study_group = $s->study_group ?? '';
     }
 
     public function cancel(): void
     {
-        $this->reset('student_code', 'full_name', 'birthdate', 'room_id', 'editingId');
+        $this->reset('student_code', 'full_name', 'email', 'password',
+            'faculty', 'major', 'program', 'study_group', 'editingId');
         $this->resetErrorBag();
     }
 
@@ -63,65 +85,118 @@ class Students extends Component
         session()->flash('ok', 'ลบนักศึกษาแล้ว');
     }
 
-    // นำเข้า CSV: header = student_code,full_name,birthdate,room
+    // นำเข้าใบลงทะเบียน .xlsx (1 ไฟล์ = 1 วิชา) → สร้างวิชาจาก header + เพิ่มนักศึกษา + enroll
     public function import(): void
     {
-        $this->validate(['csv' => ['required', 'file', 'mimes:csv,txt', 'max:4096']]);
+        // ใช้ extensions (เช็คนามสกุล) — xlsx เป็น zip การ guess จาก content มักได้ zip ทำให้ mimes ปัด
+        $this->validate(['file' => ['required', 'file', 'extensions:xlsx,xls', 'max:8192']]);
 
-        $handle = fopen($this->csv->getRealPath(), 'r');
-        $header = fgetcsv($handle);
-        $header = array_map(fn ($h) => strtolower(trim($h ?? '')), $header ?: []);
-        $idx = array_flip($header);
+        $rows = IOFactory::load($this->file->getRealPath())->getActiveSheet()->toArray();
+
+        $subject = $this->resolveSubject($rows);
+        if (! $subject) {
+            $this->addError('file', 'หาชื่อวิชาในไฟล์ไม่พบ (บรรทัด "ชื่อวิชา :")');
+            return;
+        }
+
+        $map = $this->resolveHeader($rows);
+        if ($map === null) {
+            $this->addError('file', 'หาหัวตาราง "รหัสนักศึกษา" ไม่พบ');
+            return;
+        }
+        [$headerIdx, $col] = $map;
 
         $created = 0; $updated = 0; $failed = 0;
         DB::beginTransaction();
         try {
-            while (($row = fgetcsv($handle)) !== false) {
-                if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) {
-                    continue; // ข้ามบรรทัดว่าง
-                }
-                $code = trim($row[$idx['student_code']] ?? '');
-                $name = trim($row[$idx['full_name']] ?? '');
-                $bd = $this->parseDate(trim($row[$idx['birthdate']] ?? ''));
-                $roomName = isset($idx['room']) ? trim($row[$idx['room']] ?? '') : '';
+            foreach (array_slice($rows, $headerIdx + 1) as $row) {
+                $code = trim((string) ($row[$col['code']] ?? ''));
+                $name = trim((string) ($row[$col['name']] ?? ''));
+                if ($code === '' || ! ctype_digit($code)) { continue; } // ข้ามแถวว่าง/ไม่ใช่ข้อมูล
+                if ($name === '') { $failed++; continue; }
 
-                if ($code === '' || $name === '' || ! $bd) { $failed++; continue; }
-
-                $roomId = $roomName !== ''
-                    ? Room::firstOrCreate(['name' => $roomName])->id
-                    : null;
-
-                $existing = Student::where('student_code', $code)->exists();
-                Student::updateOrCreate(
+                $email = trim((string) ($row[$col['email']] ?? ''));
+                $exists = Student::where('student_code', $code)->exists();
+                $student = Student::updateOrCreate(
                     ['student_code' => $code],
-                    ['full_name' => $name, 'birthdate' => $bd, 'room_id' => $roomId],
+                    array_merge([
+                        'full_name' => $name,
+                        'email' => $email !== '' ? $email : $code . '@spulive.net',
+                        'faculty' => $this->val($row, $col, 'faculty'),
+                        'major' => $this->val($row, $col, 'major'),
+                        'program' => $this->val($row, $col, 'program'),
+                        'study_group' => $this->val($row, $col, 'group'),
+                    ], $exists ? [] : ['password' => $code]), // ตั้งรหัสผ่านตั้งต้นเฉพาะคนใหม่
                 );
-                $existing ? $updated++ : $created++;
+                $student->subjects()->syncWithoutDetaching([$subject->id]);
+                $exists ? $updated++ : $created++;
             }
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            fclose($handle);
-            $this->addError('csv', 'นำเข้าไม่สำเร็จ: ' . $e->getMessage());
+            $this->addError('file', 'นำเข้าไม่สำเร็จ: ' . $e->getMessage());
             return;
         }
-        fclose($handle);
 
-        $this->reset('csv');
-        $this->importResult = ['created' => $created, 'updated' => $updated, 'failed' => $failed];
-        session()->flash('ok', "นำเข้าสำเร็จ: เพิ่ม {$created} แก้ไข {$updated} ผิดพลาด {$failed}");
+        $this->reset('file');
+        $this->importResult = ['subject' => $subject->code, 'created' => $created, 'updated' => $updated, 'failed' => $failed];
+        session()->flash('ok', "นำเข้าวิชา {$subject->code}: เพิ่ม {$created} แก้ไข {$updated} ผิดพลาด {$failed}");
     }
 
-    private function parseDate(string $value): ?string
+    // หาวิชาจากบรรทัด "ชื่อวิชา : <code> - <name> ..."
+    private function resolveSubject(array $rows): ?Subject
     {
-        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y'] as $fmt) {
-            try {
-                return Carbon::createFromFormat($fmt, $value)->format('Y-m-d');
-            } catch (\Throwable) {
-                continue;
+        foreach ($rows as $row) {
+            foreach ($row as $cell) {
+                $text = trim((string) $cell);
+                if (! str_contains($text, 'ชื่อวิชา')) { continue; }
+                $text = preg_replace('/^.*ชื่อวิชา\s*:?\s*/u', '', $text);
+                $parts = preg_split('/\s+-\s+/u', $text, 2);
+                $code = trim($parts[0]);
+                $name = trim($parts[1] ?? $code);
+                if ($code === '') { return null; }
+                return Subject::firstOrCreate(['code' => $code], ['name' => $name]);
             }
         }
         return null;
+    }
+
+    // หาแถว header + แม็พชื่อคอลัมน์เป็น index
+    private function resolveHeader(array $rows): ?array
+    {
+        foreach ($rows as $i => $row) {
+            $cells = array_map(fn ($c) => trim((string) $c), $row);
+            if (! in_array('รหัสนักศึกษา', $cells, true)) { continue; }
+
+            $find = function (array $needles) use ($cells) {
+                foreach ($cells as $idx => $label) {
+                    foreach ($needles as $n) {
+                        if ($label !== '' && str_contains($label, $n)) { return $idx; }
+                    }
+                }
+                return null;
+            };
+
+            return [$i, [
+                'code' => $find(['รหัสนักศึกษา']),
+                'name' => $find(['ชื่อ']),
+                'faculty' => $find(['คณะ']),
+                'major' => $find(['สาขา']),
+                'program' => $find(['รอบ', 'หลักสูตร']),
+                'group' => $find(['กลุ่ม']),
+                'email' => $find(['email', 'อีเมล', 'mail']),
+            ]];
+        }
+        return null;
+    }
+
+    // ดึงค่าจาก row ตาม key คอลัมน์ — "-"/ว่าง → null
+    private function val(array $row, array $col, string $key): ?string
+    {
+        $i = $col[$key] ?? null;
+        if ($i === null) { return null; }
+        $v = trim((string) ($row[$i] ?? ''));
+        return ($v === '' || $v === '-') ? null : $v;
     }
 
     public function updatingSearch(): void
@@ -131,16 +206,14 @@ class Students extends Component
 
     public function render()
     {
-        $students = Student::with('room')
+        $students = Student::query()
             ->when($this->search, fn ($q) => $q
                 ->where('student_code', 'like', "%{$this->search}%")
-                ->orWhere('full_name', 'like', "%{$this->search}%"))
+                ->orWhere('full_name', 'like', "%{$this->search}%")
+                ->orWhere('email', 'like', "%{$this->search}%"))
             ->orderBy('student_code')
             ->paginate(20);
 
-        return view('livewire.admin.students', [
-            'students' => $students,
-            'rooms' => Room::orderBy('name')->get(),
-        ]);
+        return view('livewire.admin.students', ['students' => $students]);
     }
 }

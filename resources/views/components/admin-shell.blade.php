@@ -13,7 +13,6 @@
         ],
         'ข้อมูล' => [
             ['admin.subjects', 'รายวิชา', 'book'],
-            ['admin.rooms',    'ห้องเรียน', 'school'],
             ['admin.students', 'นักศึกษา', 'users'],
         ],
         'ระบบ' => [

@@ -13,21 +13,37 @@
                         @error('student_code') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="label">ชื่อ-สกุล</label>
+                        <label class="label">ชื่อ-นามสกุล</label>
                         <input type="text" wire:model="full_name" class="input">
                         @error('full_name') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="label">วันเกิด <span class="text-slate-400 font-normal">(ใช้เป็นรหัสผ่าน)</span></label>
-                        <input type="date" wire:model="birthdate" class="input">
-                        @error('birthdate') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
+                        <label class="label">อีเมลสถาบัน</label>
+                        <input type="email" wire:model="email" class="input" placeholder="name.abc@spulive.net">
+                        @error('email') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="label">ห้อง</label>
-                        <select wire:model="room_id" class="select">
-                            <option value="">— เลือกห้อง —</option>
-                            @foreach ($rooms as $r)<option value="{{ $r->id }}">{{ $r->name }}</option>@endforeach
-                        </select>
+                        <label class="label">รหัสผ่าน <span class="text-slate-400 font-normal">({{ $editingId ? 'เว้นว่าง = คงเดิม' : 'เว้นว่าง = รหัสนักศึกษา' }})</span></label>
+                        <input type="text" wire:model="password" class="input" placeholder="••••••">
+                        @error('password') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="label">คณะ</label>
+                            <input type="text" wire:model="faculty" class="input">
+                        </div>
+                        <div>
+                            <label class="label">สาขา</label>
+                            <input type="text" wire:model="major" class="input">
+                        </div>
+                        <div>
+                            <label class="label">รอบ/หลักสูตร</label>
+                            <input type="text" wire:model="program" class="input">
+                        </div>
+                        <div>
+                            <label class="label">กลุ่มเรียน</label>
+                            <input type="text" wire:model="study_group" class="input">
+                        </div>
                     </div>
                     <div class="flex gap-2">
                         <button class="btn-primary flex-1"><x-icon name="check" class="w-4 h-4" /> บันทึก</button>
@@ -38,16 +54,19 @@
                 <form wire:submit="import" class="card card-pad space-y-3">
                     <div class="flex items-center gap-2">
                         <x-icon name="upload" class="w-5 h-5 text-emerald-600" />
-                        <h2 class="font-semibold text-slate-800 dark:text-slate-100">นำเข้าจาก CSV</h2>
+                        <h2 class="font-semibold text-slate-800 dark:text-slate-100">นำเข้าใบลงทะเบียน (Excel)</h2>
                     </div>
-                    <p class="text-xs text-slate-500">คอลัมน์: <code class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">student_code,full_name,birthdate,room</code></p>
-                    <input type="file" wire:model="csv" accept=".csv,.txt"
+                    <p class="text-xs text-slate-500">ไฟล์ .xlsx 1 ไฟล์ = 1 วิชา — ระบบอ่านชื่อวิชาจากหัวกระดาษ สร้างวิชาและลงทะเบียนนักศึกษาให้อัตโนมัติ (รหัสผ่านตั้งต้น = รหัสนักศึกษา)</p>
+                    <input type="file" wire:model="file" accept=".xlsx,.xls"
                            class="block w-full text-sm text-slate-600 dark:text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:text-emerald-700 file:font-medium dark:file:bg-emerald-500/15 dark:file:text-emerald-400">
-                    @error('csv') <p class="text-sm text-rose-600">{{ $message }}</p> @enderror
-                    <button class="btn-success w-full" wire:loading.attr="disabled" wire:target="import,csv">
+                    @error('file') <p class="text-sm text-rose-600">{{ $message }}</p> @enderror
+                    <button class="btn-success w-full" wire:loading.attr="disabled" wire:target="import,file">
                         <span wire:loading.remove wire:target="import"><x-icon name="upload" class="w-4 h-4" /> นำเข้า</span>
                         <span wire:loading wire:target="import">กำลังนำเข้า...</span>
                     </button>
+                    @if ($importResult)
+                        <p class="text-xs text-emerald-600">วิชา {{ $importResult['subject'] }} — เพิ่ม {{ $importResult['created'] }} · แก้ไข {{ $importResult['updated'] }} · ผิดพลาด {{ $importResult['failed'] }}</p>
+                    @endif
                 </form>
             </div>
 
@@ -55,20 +74,23 @@
                 <div class="p-4 border-b border-slate-100 dark:border-slate-800">
                     <div class="relative">
                         <x-icon name="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" wire:model.live.debounce.300ms="search" placeholder="ค้นหารหัส / ชื่อ" class="input pl-9">
+                        <input type="text" wire:model.live.debounce.300ms="search" placeholder="ค้นหารหัส / ชื่อ / อีเมล" class="input pl-9">
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
-                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-สกุล</th><th class="th">ห้อง</th><th class="th text-right">จัดการ</th></tr>
+                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-นามสกุล</th><th class="th">กลุ่ม</th><th class="th text-right">จัดการ</th></tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @forelse ($students as $s)
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                     <td class="td font-medium text-slate-900 dark:text-white">{{ $s->student_code }}</td>
-                                    <td class="td">{{ $s->full_name }}</td>
-                                    <td class="td"><span class="badge-slate">{{ $s->room?->name ?? '—' }}</span></td>
+                                    <td class="td">
+                                        <p>{{ $s->full_name }}</p>
+                                        <p class="text-xs text-slate-400">{{ $s->email }}</p>
+                                    </td>
+                                    <td class="td"><span class="badge-slate">{{ $s->study_group ?? '—' }}</span></td>
                                     <td class="td text-right whitespace-nowrap">
                                         <button wire:click="edit({{ $s->id }})" class="btn-ghost btn-sm"><x-icon name="pencil" class="w-4 h-4" /></button>
                                         <button wire:click="delete({{ $s->id }})" wire:confirm="ลบนักศึกษาคนนี้?" class="btn-danger btn-sm"><x-icon name="trash" class="w-4 h-4" /></button>

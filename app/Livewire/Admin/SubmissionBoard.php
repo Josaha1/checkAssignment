@@ -3,7 +3,6 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Assignment;
-use App\Models\Room;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
@@ -13,7 +12,7 @@ class SubmissionBoard extends Component
 {
     public ?int $subjectId = null;
     public ?int $assignmentId = null;
-    public ?int $roomId = null;
+    public ?string $group = null;
 
     public function updatedSubjectId(): void
     {
@@ -23,7 +22,7 @@ class SubmissionBoard extends Component
     public function render()
     {
         $subjects = Subject::orderBy('code')->get();
-        $rooms = Room::orderBy('name')->get();
+        $groups = Student::whereNotNull('study_group')->distinct()->orderBy('study_group')->pluck('study_group');
         $assignments = $this->subjectId
             ? Assignment::where('subject_id', $this->subjectId)->orderBy('id')->get()
             : collect();
@@ -33,9 +32,9 @@ class SubmissionBoard extends Component
         $missingCount = 0;
 
         if ($this->assignmentId) {
-            $students = Student::with('room')
+            $students = Student::query()
                 ->whereHas('subjects', fn ($q) => $q->whereKey($this->subjectId))
-                ->when($this->roomId, fn ($q) => $q->where('room_id', $this->roomId))
+                ->when($this->group, fn ($q) => $q->where('study_group', $this->group))
                 ->orderBy('student_code')->get();
 
             $subs = Submission::with('files')
@@ -52,7 +51,7 @@ class SubmissionBoard extends Component
         }
 
         return view('livewire.admin.submission-board', compact(
-            'subjects', 'rooms', 'assignments', 'rows', 'submittedCount', 'missingCount'
+            'subjects', 'groups', 'assignments', 'rows', 'submittedCount', 'missingCount'
         ));
     }
 }

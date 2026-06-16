@@ -2,14 +2,13 @@
 
 namespace App\Livewire\Student;
 
-use App\Models\Student;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class Login extends Component
 {
-    public string $student_code = '';
-    public string $birthdate = ''; // input type=date → Y-m-d
+    public string $email = '';
+    public string $password = '';
 
     public function mount(): void
     {
@@ -21,22 +20,19 @@ class Login extends Component
     public function login(): void
     {
         $this->validate([
-            'student_code' => ['required', 'string'],
-            'birthdate' => ['required', 'date'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
         ], attributes: [
-            'student_code' => 'รหัสนักศึกษา',
-            'birthdate' => 'วันเกิด',
+            'email' => 'อีเมล',
+            'password' => 'รหัสผ่าน',
         ]);
 
-        $student = Student::where('student_code', trim($this->student_code))->first();
-
-        // รหัสผ่าน = วันเกิด เทียบตรง ๆ ตามสเปก (ไม่ hash)
-        if (! $student || $student->birthdate->format('Y-m-d') !== $this->birthdate) {
-            $this->addError('student_code', 'รหัสนักศึกษาหรือวันเกิดไม่ถูกต้อง');
+        // รหัสผ่าน hash แล้ว → ใช้ attempt เทียบ Hash::check ให้
+        if (! Auth::guard('student')->attempt(['email' => trim($this->email), 'password' => $this->password])) {
+            $this->addError('email', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง');
             return;
         }
 
-        Auth::guard('student')->login($student);
         session()->regenerate();
         $this->redirectRoute('student.dashboard', navigate: true);
     }

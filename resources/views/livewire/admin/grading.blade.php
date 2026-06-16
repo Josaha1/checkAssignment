@@ -9,16 +9,16 @@
                 </select>
             </div>
             <div>
-                <label class="label">ห้อง</label>
-                <select wire:model.live="roomId" class="select !w-auto">
-                    <option value="">ทุกห้อง</option>
-                    @foreach ($rooms as $r)<option value="{{ $r->id }}">{{ $r->name }}</option>@endforeach
+                <label class="label">กลุ่มเรียน</label>
+                <select wire:model.live="group" class="select !w-auto">
+                    <option value="">ทุกกลุ่ม</option>
+                    @foreach ($groups as $g)<option value="{{ $g }}">{{ $g }}</option>@endforeach
                 </select>
             </div>
             @if ($subjectId)
                 <div class="ml-auto flex gap-2">
                     <button wire:click="saveScores" class="btn-primary"><x-icon name="check" class="w-4 h-4" /> บันทึกคะแนน</button>
-                    <a href="{{ route('admin.export', ['subject' => $subjectId, 'room' => $roomId]) }}" class="btn-success"><x-icon name="download" class="w-4 h-4" /> Export CSV</a>
+                    <a href="{{ route('admin.export', ['subject' => $subjectId, 'group' => $group]) }}" class="btn-success"><x-icon name="download" class="w-4 h-4" /> Export CSV</a>
                 </div>
             @endif
         </div>
@@ -43,7 +43,7 @@
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                     <td class="td sticky left-0 bg-white dark:bg-slate-900 z-10">
                                         <p class="font-medium text-slate-900 dark:text-white">{{ $st->student_code }}</p>
-                                        <p class="text-xs text-slate-400">{{ $st->full_name }} · {{ $st->room?->name }}</p>
+                                        <p class="text-xs text-slate-400">{{ $st->full_name }} · {{ $st->study_group }}</p>
                                     </td>
                                     @foreach ($assignments as $a)
                                         @php $sub = $matrix[$st->id][$a->id] ?? null; @endphp

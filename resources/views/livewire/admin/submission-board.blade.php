@@ -16,10 +16,10 @@
                 </select>
             </div>
             <div>
-                <label class="label">ห้อง</label>
-                <select wire:model.live="roomId" class="select !w-auto">
-                    <option value="">ทุกห้อง</option>
-                    @foreach ($rooms as $r)<option value="{{ $r->id }}">{{ $r->name }}</option>@endforeach
+                <label class="label">กลุ่มเรียน</label>
+                <select wire:model.live="group" class="select !w-auto">
+                    <option value="">ทุกกลุ่ม</option>
+                    @foreach ($groups as $g)<option value="{{ $g }}">{{ $g }}</option>@endforeach
                 </select>
             </div>
         </div>
@@ -44,14 +44,14 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
-                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-สกุล</th><th class="th">ห้อง</th><th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์</th></tr>
+                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-นามสกุล</th><th class="th">กลุ่ม</th><th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์</th></tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @foreach ($rows as $row)
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                     <td class="td font-medium text-slate-900 dark:text-white">{{ $row['student']->student_code }}</td>
                                     <td class="td">{{ $row['student']->full_name }}</td>
-                                    <td class="td"><span class="badge-slate">{{ $row['student']->room?->name ?? '—' }}</span></td>
+                                    <td class="td"><span class="badge-slate">{{ $row['student']->study_group ?? '—' }}</span></td>
                                     <td class="td">
                                         @if ($row['submission'])
                                             <span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>

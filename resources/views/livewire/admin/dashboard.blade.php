@@ -6,7 +6,7 @@
                 $cards = [
                     ['นักศึกษา', $stats['students'], 'users', 'brand'],
                     ['รายวิชา', $stats['subjects'], 'book', 'violet'],
-                    ['ห้องเรียน', $stats['rooms'], 'school', 'sky'],
+                    ['กลุ่มเรียน', $stats['groups'], 'school', 'sky'],
                     ['ชิ้นงาน', $stats['assignments'], 'clipboard', 'emerald'],
                     ['ส่งแล้ว', $stats['submissions'], 'inbox', 'teal'],
                     ['รอตรวจ', $stats['ungraded'], 'clock', 'amber'],

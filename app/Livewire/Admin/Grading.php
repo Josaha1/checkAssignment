@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Room;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
@@ -11,7 +10,7 @@ use Livewire\Component;
 class Grading extends Component
 {
     public ?int $subjectId = null;
-    public ?int $roomId = null;
+    public ?string $group = null;
     public array $scores = []; // submissionId => score
 
     public function updatedSubjectId(): void
@@ -39,7 +38,7 @@ class Grading extends Component
     public function render()
     {
         $subjects = Subject::orderBy('code')->get();
-        $rooms = Room::orderBy('name')->get();
+        $groups = Student::whereNotNull('study_group')->distinct()->orderBy('study_group')->pluck('study_group');
 
         $assignments = collect();
         $students = collect();
@@ -49,9 +48,9 @@ class Grading extends Component
             $subject = Subject::with('assignments')->find($this->subjectId);
             $assignments = $subject?->assignments->sortBy('id')->values() ?? collect();
 
-            $students = Student::with('room')
+            $students = Student::query()
                 ->whereHas('subjects', fn ($q) => $q->whereKey($this->subjectId))
-                ->when($this->roomId, fn ($q) => $q->where('room_id', $this->roomId))
+                ->when($this->group, fn ($q) => $q->where('study_group', $this->group))
                 ->orderBy('student_code')->get();
 
             $subs = Submission::with('files')
@@ -66,6 +65,6 @@ class Grading extends Component
             }
         }
 
-        return view('livewire.admin.grading', compact('subjects', 'rooms', 'assignments', 'students', 'matrix'));
+        return view('livewire.admin.grading', compact('subjects', 'groups', 'assignments', 'students', 'matrix'));
     }
 }

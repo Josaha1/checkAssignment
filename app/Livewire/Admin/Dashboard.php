@@ -3,7 +3,6 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Assignment;
-use App\Models\Room;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
@@ -17,7 +16,7 @@ class Dashboard extends Component
         $stats = [
             'students' => Student::count(),
             'subjects' => Subject::count(),
-            'rooms' => Room::count(),
+            'groups' => Student::whereNotNull('study_group')->distinct('study_group')->count('study_group'),
             'assignments' => Assignment::count(),
             'submissions' => Submission::count(),
             'ungraded' => Submission::whereNull('score')->count(),

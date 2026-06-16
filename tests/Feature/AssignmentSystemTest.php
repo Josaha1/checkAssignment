@@ -1,11 +1,11 @@
 <?php
 
 use App\Livewire\Admin\Grading;
+use App\Livewire\Admin\Students;
 use App\Livewire\Student\Dashboard;
 use App\Livewire\Student\Login as StudentLogin;
 use App\Livewire\Student\Submit;
 use App\Models\Assignment;
-use App\Models\Room;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
@@ -13,7 +13,11 @@ use App\Models\User;
 use App\Contracts\DriveStorage;
 use App\Services\FakeDriveStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 uses(RefreshDatabase::class);
 
@@ -26,12 +30,13 @@ function fakeDrive(): FakeDriveStorage
 
 function makeStudentWithSubject(): array
 {
-    $room = Room::create(['name' => 'ปวส.1/1']);
     $student = Student::create([
         'student_code' => '670099999',
-        'full_name' => 'ทดสอบ ระบบ',
-        'birthdate' => '2005-05-20',
-        'room_id' => $room->id,
+        'full_name' => 'นาย ทดสอบ ระบบ',
+        'email' => 'test.sys@spulive.net',
+        'password' => '670099999', // cast 'hashed' จะ hash ให้
+        'faculty' => 'นิติศาสตร์',
+        'study_group' => '043',
     ]);
     $subject = Subject::create(['code' => 'T-001', 'name' => 'วิชาทดสอบ']);
     $student->subjects()->attach($subject->id);
@@ -39,15 +44,32 @@ function makeStudentWithSubject(): array
         'subject_id' => $subject->id, 'title' => 'งานทดสอบ', 'max_score' => 10,
     ]);
 
-    return compact('room', 'student', 'subject', 'assignment');
+    return compact('student', 'subject', 'assignment');
 }
 
-it('นักศึกษา login ด้วยรหัส + วันเกิดถูกต้องได้', function () {
+// สร้างไฟล์ xlsx จำลองใบลงทะเบียน (header เหมือน SPU) คืน path
+function makeRosterXlsx(): string
+{
+    $ss = new Spreadsheet();
+    $ss->getActiveSheet()->fromArray([
+        ['ใบแจ้งรายชื่อการลงทะเบียนเรียน ภาคการศึกษา 3/2568'],
+        ['ชื่อวิชา : UID10667 - เทคโนโลยีสารสนเทศเพื่ออาชีพและการทำงาน 1(0-2)'],
+        ['ลำดับ', 'รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'คณะ', 'สาขา', 'รอบ', 'กลุ่มเรียน', 'email-สถาบัน-1'],
+        ['1', '67078724', 'นาย พิพัฒน์ สงค์มี', 'นิติศาสตร์', '-', 'หลักสูตรตรีเช้า', '043', 'piphat.son@spulive.net'],
+        ['2', '67089254', 'น.ส. สุภาวณี บุญภิบาล', 'นิเทศศาสตร์', 'สื่อสารการแสดง', 'หลักสูตรตรีเช้า', '044', 'suparwanee.boo@spulive.net'],
+    ], null, 'A1');
+
+    $path = tempnam(sys_get_temp_dir(), 'roster') . '.xlsx';
+    (new Xlsx($ss))->save($path);
+    return $path;
+}
+
+it('นักศึกษา login ด้วยอีเมล + รหัสผ่านถูกต้องได้', function () {
     $ctx = makeStudentWithSubject();
 
     Livewire::test(StudentLogin::class)
-        ->set('student_code', '670099999')
-        ->set('birthdate', '2005-05-20')
+        ->set('email', 'test.sys@spulive.net')
+        ->set('password', '670099999')
         ->call('login')
         ->assertHasNoErrors()
         ->assertRedirect(route('student.dashboard'));
@@ -55,14 +77,14 @@ it('นักศึกษา login ด้วยรหัส + วันเกิ
     expect(auth('student')->id())->toBe($ctx['student']->id);
 });
 
-it('นักศึกษา login วันเกิดผิด ถูกปฏิเสธ', function () {
+it('นักศึกษา login รหัสผ่านผิด ถูกปฏิเสธ', function () {
     makeStudentWithSubject();
 
     Livewire::test(StudentLogin::class)
-        ->set('student_code', '670099999')
-        ->set('birthdate', '2000-01-01')
+        ->set('email', 'test.sys@spulive.net')
+        ->set('password', 'wrong-pass')
         ->call('login')
-        ->assertHasErrors('student_code');
+        ->assertHasErrors('email');
 
     expect(auth('student')->check())->toBeFalse();
 });
@@ -83,22 +105,22 @@ it('นักศึกษาแนบไฟล์ขึ้น Drive และส
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
         ->set('uploads', [
-            \Illuminate\Http\UploadedFile::fake()->create('a.pdf', 50, 'application/pdf'),
-            \Illuminate\Http\UploadedFile::fake()->create('b.docx', 50, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            UploadedFile::fake()->create('a.pdf', 50, 'application/pdf'),
+            UploadedFile::fake()->create('b.docx', 50, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
         ])
         ->call('save')
         ->assertHasNoErrors();
 
     $sub = Submission::with('files')->first();
     expect($sub->files)->toHaveCount(2);
-    // โครงสร้างโฟลเดอร์ วิชา/ห้อง/งาน/รหัสนศ.
-    expect($fake->paths[0])->toContain('T-001')->toContain('ปวส.1/1')->toContain('งานทดสอบ')->toContain('670099999');
+    // โครงสร้างโฟลเดอร์ วิชา/กลุ่มเรียน/งาน/รหัสนศ.
+    expect($fake->paths[0])->toContain('T-001')->toContain('043')->toContain('งานทดสอบ')->toContain('670099999');
 
     // ให้คะแนนแล้ว → แนบเพิ่มไม่ได้
     $sub->update(['score' => 8, 'graded_at' => now()]);
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
-        ->set('uploads', [\Illuminate\Http\UploadedFile::fake()->create('c.pdf', 50, 'application/pdf')])
+        ->set('uploads', [UploadedFile::fake()->create('c.pdf', 50, 'application/pdf')])
         ->call('save')
         ->assertHasErrors('uploads');
 
@@ -111,18 +133,17 @@ it('แนบไฟล์ชนิดไม่อนุญาตถูกปฏ�
 
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
-        ->set('uploads', [\Illuminate\Http\UploadedFile::fake()->create('evil.exe', 50, 'application/x-msdownload')])
+        ->set('uploads', [UploadedFile::fake()->create('evil.exe', 50, 'application/x-msdownload')])
         ->call('save')
         ->assertHasErrors('uploads.*');
 });
 
 it('ส่งงานไม่ได้ถ้ายังไม่เชื่อม Drive', function () {
     $ctx = makeStudentWithSubject();
-    // ไม่ผูก FakeDrive → ใช้ GoogleDriveService จริงที่ยังไม่เชื่อม (isConnected=false)
 
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
-        ->set('uploads', [\Illuminate\Http\UploadedFile::fake()->create('a.pdf', 50, 'application/pdf')])
+        ->set('uploads', [UploadedFile::fake()->create('a.pdf', 50, 'application/pdf')])
         ->call('save')
         ->assertHasErrors('uploads');
 });
@@ -132,8 +153,6 @@ it('นักศึกษามองไม่เห็นคะแนนตั�
     Submission::create([
         'assignment_id' => $ctx['assignment']->id,
         'student_id' => $ctx['student']->id,
-        'link' => 'https://drive.google.com/x',
-        // ใช้ค่าที่เป็นไปไม่ได้ในพิกัด SVG icon (>24) กัน false-positive
         'score' => 63.41, 'submitted_at' => now(), 'graded_at' => now(),
     ]);
 
@@ -177,7 +196,7 @@ it('แอดมินให้คะแนนผ่านหน้า grading �
     $sub = Submission::create([
         'assignment_id' => $ctx['assignment']->id,
         'student_id' => $ctx['student']->id,
-        'link' => 'https://drive.google.com/x', 'submitted_at' => now(),
+        'submitted_at' => now(),
     ]);
 
     Livewire::actingAs($admin)
@@ -197,7 +216,6 @@ it('export csv มีรหัสนักศึกษาและคะแน�
     Submission::create([
         'assignment_id' => $ctx['assignment']->id,
         'student_id' => $ctx['student']->id,
-        'link' => 'https://drive.google.com/x',
         'score' => 7, 'submitted_at' => now(), 'graded_at' => now(),
     ]);
 
@@ -207,7 +225,33 @@ it('export csv มีรหัสนักศึกษาและคะแน�
     $csv = $res->streamedContent();
     expect($csv)->toContain('670099999');
     expect($csv)->toContain('รหัสนักศึกษา');
-    expect($csv)->toContain('7'); // คะแนน
+    expect($csv)->toContain('7');
+});
+
+it('แอดมินนำเข้าใบลงทะเบียน xlsx → สร้างวิชา + นักศึกษา + ลงทะเบียน', function () {
+    $admin = User::factory()->create();
+    $path = makeRosterXlsx();
+    $file = UploadedFile::fake()->createWithContent('roster.xlsx', file_get_contents($path));
+
+    Livewire::actingAs($admin)
+        ->test(Students::class)
+        ->set('file', $file)
+        ->call('import')
+        ->assertHasNoErrors();
+
+    expect(Student::count())->toBe(2);
+    $subject = Subject::where('code', 'UID10667')->first();
+    expect($subject)->not->toBeNull();
+
+    $s = Student::where('student_code', '67078724')->first();
+    expect($s->email)->toBe('piphat.son@spulive.net');
+    expect($s->faculty)->toBe('นิติศาสตร์');
+    expect($s->major)->toBeNull(); // "-" → null
+    expect($s->study_group)->toBe('043');
+    expect(Hash::check('67078724', $s->password))->toBeTrue(); // รหัสผ่านตั้งต้น = รหัสนักศึกษา
+    expect($s->subjects()->whereKey($subject->id)->exists())->toBeTrue();
+
+    @unlink($path);
 });
 
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {

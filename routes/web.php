@@ -38,7 +38,6 @@ Route::post('/admin/logout', function () {
 
 Route::middleware('auth:web')->prefix('admin')->group(function () {
     Route::get('/', Admin\Dashboard::class)->name('admin.dashboard');
-    Route::get('/rooms', Admin\Rooms::class)->name('admin.rooms');
     Route::get('/students', Admin\Students::class)->name('admin.students');
     Route::get('/subjects', Admin\Subjects::class)->name('admin.subjects');
     Route::get('/subjects/{subject}/assignments', Admin\Assignments::class)->name('admin.assignments');

@@ -53,10 +53,10 @@ class Submit extends Component
             throw ValidationException::withMessages(['uploads' => 'ระบบยังไม่ได้เชื่อมต่อ Google Drive — แจ้งอาจารย์ผู้ดูแล']);
         }
 
-        // โครงสร้าง: วิชา / ห้อง / งาน / รหัสนักศึกษา
+        // โครงสร้าง: วิชา / กลุ่มเรียน / งาน / รหัสนักศึกษา
         $folderId = $drive->ensureFolderPath([
             $this->clean($this->assignment->subject->code . ' ' . $this->assignment->subject->name),
-            $this->clean($student->room?->name ?? 'ไม่มีห้อง'),
+            $this->clean($student->study_group ?? 'ไม่มีกลุ่ม'),
             $this->clean($this->assignment->title),
             $student->student_code,
         ]);

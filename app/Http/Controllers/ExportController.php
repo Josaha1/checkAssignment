@@ -9,16 +9,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
 {
-    // CSV: รหัสนักศึกษา + คะแนนแต่ละชิ้นงาน (กรองตามวิชา/ห้อง)
+    // CSV: รหัสนักศึกษา + คะแนนแต่ละชิ้นงาน (กรองตามวิชา/กลุ่มเรียน)
     public function csv(Request $request, Subject $subject): StreamedResponse
     {
-        $roomId = $request->integer('room') ?: null;
+        $group = $request->string('group')->toString() ?: null;
 
         $assignments = $subject->assignments()->orderBy('id')->get();
 
-        $students = Student::with('room')
+        $students = Student::query()
             ->whereHas('subjects', fn ($q) => $q->whereKey($subject->id))
-            ->when($roomId, fn ($q) => $q->where('room_id', $roomId))
+            ->when($group, fn ($q) => $q->where('study_group', $group))
             ->orderBy('student_code')->get();
 
         // map: student_id => [assignment_id => score]
@@ -34,7 +34,7 @@ class ExportController extends Controller
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM ให้ Excel อ่านภาษาไทยถูก
 
-            $header = ['รหัสนักศึกษา', 'ชื่อ-สกุล', 'ห้อง'];
+            $header = ['รหัสนักศึกษา', 'ชื่อ-นามสกุล', 'กลุ่มเรียน'];
             foreach ($assignments as $a) {
                 $header[] = $a->title;
             }
@@ -42,7 +42,7 @@ class ExportController extends Controller
             fputcsv($out, $header);
 
             foreach ($students as $st) {
-                $row = [$st->student_code, $st->full_name, $st->room?->name ?? ''];
+                $row = [$st->student_code, $st->full_name, $st->study_group ?? ''];
                 $total = 0;
                 foreach ($assignments as $a) {
                     $sub = $scores[$st->id][$a->id] ?? null;
