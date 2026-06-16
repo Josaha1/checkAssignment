@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Render terminate TLS ที่ edge — เชื่อ X-Forwarded-Proto กัน asset/redirect หลุดเป็น http (Mixed Content)
+        $middleware->trustProxies(at: '*');
+
         // guest แอดมิน → admin.login, ที่เหลือ → student.login
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin*')
             ? route('admin.login')
