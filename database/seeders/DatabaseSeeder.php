@@ -12,8 +12,8 @@ class DatabaseSeeder extends Seeder
     {
         // มีแค่บัญชีแอดมินตั้งต้น — ข้อมูลนักศึกษา/วิชา นำเข้าจากใบลงทะเบียน (Excel)
         User::updateOrCreate(
-            ['email' => 'admin@example.com'],
-            ['name' => 'ผู้ดูแลระบบ', 'password' => Hash::make('password')],
+            ['email' => '6750245.st@spu.ac.th'],
+            ['name' => 'ผู้ดูแลระบบ', 'password' => Hash::make('1750200051131')],
         );
     }
 }

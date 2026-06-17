@@ -13,23 +13,21 @@ COPY composer.json composer.lock ./
 RUN composer config policy.advisories.block false \
  && composer install --no-dev --no-scripts --prefer-dist --optimize-autoloader --ignore-platform-reqs
 
-# ---------- 3) runtime (PHP 8.4 + pgsql) ----------
-FROM serversideup/php:8.4-cli
-ENTRYPOINT []
+# ---------- 3) runtime (FrankenPHP — production server รับ concurrent ได้จริง) ----------
+FROM serversideup/php:8.4-frankenphp
 USER root
-WORKDIR /app
+WORKDIR /var/www/html
 
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build
 
-RUN composer dump-autoload --optimize --no-dev 2>/dev/null || true \
- && chown -R www-data:www-data /app/storage /app/bootstrap/cache /app/database
+# เคลียร์ cache ที่อาจติดมาจาก context (เช่น packages.php ที่อ้าง dev provider) → ให้ค้นพบใหม่ตอน runtime
+RUN rm -f bootstrap/cache/*.php \
+ && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
 USER www-data
-ENV PORT=10000
-# หลาย worker — กัน request ยาว (เช่น import) บล็อก health check จน Render restart (502)
-ENV PHP_CLI_SERVER_WORKERS=5
+ENV PHP_OPCACHE_ENABLE=1
 
-# migrate (ไม่ fresh) + seed — ไม่ลบข้อมูลเดิม
-CMD ["sh", "-c", "php artisan config:clear && php artisan migrate --force --seed && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
+# migrate (ไม่ fresh) + seed แล้วเปิด FrankenPHP ที่พอร์ต $PORT ของ Render (HTTP — Render ทำ TLS ที่ edge)
+CMD ["sh", "-c", "php artisan config:clear && php artisan migrate --force --seed && CADDY_HTTP_PORT=${PORT:-8080} frankenphp run --config /etc/frankenphp/Caddyfile --adapter caddyfile"]
