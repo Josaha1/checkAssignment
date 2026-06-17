@@ -91,7 +91,10 @@ class Students extends Component
         // ใช้ extensions (เช็คนามสกุล) — xlsx เป็น zip การ guess จาก content มักได้ zip ทำให้ mimes ปัด
         $this->validate(['file' => ['required', 'file', 'extensions:xlsx,xls', 'max:8192']]);
 
-        $rows = IOFactory::load($this->file->getRealPath())->getActiveSheet()->toArray();
+        // อ่านเฉพาะข้อมูล ข้าม styles — กัน RAM พุ่งจน worker ตาย (free tier 256M)
+        $reader = IOFactory::createReaderForFile($this->file->getRealPath());
+        $reader->setReadDataOnly(true);
+        $rows = $reader->load($this->file->getRealPath())->getActiveSheet()->toArray();
 
         $subject = $this->resolveSubject($rows);
         if (! $subject) {
