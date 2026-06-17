@@ -110,35 +110,38 @@ class Students extends Component
         [$headerIdx, $col] = $map;
 
         $created = 0; $updated = 0; $failed = 0;
-        DB::beginTransaction();
-        try {
-            foreach (array_slice($rows, $headerIdx + 1) as $row) {
-                $code = trim((string) ($row[$col['code']] ?? ''));
-                $name = trim((string) ($row[$col['name']] ?? ''));
-                if ($code === '' || ! ctype_digit($code)) { continue; } // ข้ามแถวว่าง/ไม่ใช่ข้อมูล
-                if ($name === '') { $failed++; continue; }
+        // commit เป็นก้อนละ 50 แถว — transaction สั้น + ปล่อย memory ระหว่างทาง เผื่อไฟล์ใหญ่
+        foreach (array_chunk(array_slice($rows, $headerIdx + 1), 50) as $chunk) {
+            DB::beginTransaction();
+            try {
+                foreach ($chunk as $row) {
+                    $code = trim((string) ($row[$col['code']] ?? ''));
+                    $name = trim((string) ($row[$col['name']] ?? ''));
+                    if ($code === '' || ! ctype_digit($code)) { continue; } // ข้ามแถวว่าง/ไม่ใช่ข้อมูล
+                    if ($name === '') { $failed++; continue; }
 
-                $email = trim((string) ($row[$col['email']] ?? ''));
-                $exists = Student::where('student_code', $code)->exists();
-                $student = Student::updateOrCreate(
-                    ['student_code' => $code],
-                    array_merge([
-                        'full_name' => $name,
-                        'email' => $email !== '' ? $email : $code . '@spulive.net',
-                        'faculty' => $this->val($row, $col, 'faculty'),
-                        'major' => $this->val($row, $col, 'major'),
-                        'program' => $this->val($row, $col, 'program'),
-                        'study_group' => $this->val($row, $col, 'group'),
-                    ], $exists ? [] : ['password' => $code]), // ตั้งรหัสผ่านตั้งต้นเฉพาะคนใหม่
-                );
-                $student->subjects()->syncWithoutDetaching([$subject->id]);
-                $exists ? $updated++ : $created++;
+                    $email = trim((string) ($row[$col['email']] ?? ''));
+                    $exists = Student::where('student_code', $code)->exists();
+                    $student = Student::updateOrCreate(
+                        ['student_code' => $code],
+                        array_merge([
+                            'full_name' => $name,
+                            'email' => $email !== '' ? $email : $code . '@spulive.net',
+                            'faculty' => $this->val($row, $col, 'faculty'),
+                            'major' => $this->val($row, $col, 'major'),
+                            'program' => $this->val($row, $col, 'program'),
+                            'study_group' => $this->val($row, $col, 'group'),
+                        ], $exists ? [] : ['password' => $code]), // ตั้งรหัสผ่านตั้งต้นเฉพาะคนใหม่
+                    );
+                    $student->subjects()->syncWithoutDetaching([$subject->id]);
+                    $exists ? $updated++ : $created++;
+                }
+                DB::commit();
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                $this->addError('file', 'นำเข้าไม่สำเร็จ: ' . $e->getMessage());
+                return;
             }
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            $this->addError('file', 'นำเข้าไม่สำเร็จ: ' . $e->getMessage());
-            return;
         }
 
         $this->reset('file');
