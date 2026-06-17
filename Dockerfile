@@ -28,6 +28,8 @@ RUN composer dump-autoload --optimize --no-dev 2>/dev/null || true \
 
 USER www-data
 ENV PORT=10000
+# หลาย worker — กัน request ยาว (เช่น import) บล็อก health check จน Render restart (502)
+ENV PHP_CLI_SERVER_WORKERS=5
 
 # ⚠️ ชั่วคราว: migrate:fresh เคลียร์ + apply schema ใหม่ครั้งเดียว — ต้อง revert กลับเป็น migrate หลัง import เสร็จ
 CMD ["sh", "-c", "php artisan config:clear && php artisan migrate:fresh --force --seed && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]

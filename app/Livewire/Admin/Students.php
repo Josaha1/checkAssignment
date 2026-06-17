@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\Student;
 use App\Models\Subject;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -109,39 +110,67 @@ class Students extends Component
         }
         [$headerIdx, $col] = $map;
 
-        $created = 0; $updated = 0; $failed = 0;
-        // commit เป็นก้อนละ 50 แถว — transaction สั้น + ปล่อย memory ระหว่างทาง เผื่อไฟล์ใหญ่
-        foreach (array_chunk(array_slice($rows, $headerIdx + 1), 50) as $chunk) {
-            DB::beginTransaction();
-            try {
-                foreach ($chunk as $row) {
-                    $code = trim((string) ($row[$col['code']] ?? ''));
-                    $name = trim((string) ($row[$col['name']] ?? ''));
-                    if ($code === '' || ! ctype_digit($code)) { continue; } // ข้ามแถวว่าง/ไม่ใช่ข้อมูล
-                    if ($name === '') { $failed++; continue; }
+        // parse ทุกแถวก่อน (กันรหัสซ้ำในไฟล์ด้วย key) — ลด query โดยทำงานเป็นชุด
+        $parsed = [];
+        $failed = 0;
+        foreach (array_slice($rows, $headerIdx + 1) as $row) {
+            $code = trim((string) ($row[$col['code']] ?? ''));
+            $name = trim((string) ($row[$col['name']] ?? ''));
+            if ($code === '' || ! ctype_digit($code)) { continue; } // ข้ามแถวว่าง/ไม่ใช่ข้อมูล
+            if ($name === '') { $failed++; continue; }
 
-                    $email = trim((string) ($row[$col['email']] ?? ''));
-                    $exists = Student::where('student_code', $code)->exists();
-                    $student = Student::updateOrCreate(
-                        ['student_code' => $code],
-                        array_merge([
-                            'full_name' => $name,
-                            'email' => $email !== '' ? $email : $code . '@spulive.net',
-                            'faculty' => $this->val($row, $col, 'faculty'),
-                            'major' => $this->val($row, $col, 'major'),
-                            'program' => $this->val($row, $col, 'program'),
-                            'study_group' => $this->val($row, $col, 'group'),
-                        ], $exists ? [] : ['password' => $code]), // ตั้งรหัสผ่านตั้งต้นเฉพาะคนใหม่
-                    );
-                    $student->subjects()->syncWithoutDetaching([$subject->id]);
-                    $exists ? $updated++ : $created++;
+            $email = trim((string) ($row[$col['email']] ?? ''));
+            $parsed[$code] = [
+                'student_code' => $code,
+                'full_name' => $name,
+                'email' => $email !== '' ? $email : $code . '@spulive.net',
+                'faculty' => $this->val($row, $col, 'faculty'),
+                'major' => $this->val($row, $col, 'major'),
+                'program' => $this->val($row, $col, 'program'),
+                'study_group' => $this->val($row, $col, 'group'),
+            ];
+        }
+
+        if (! $parsed) {
+            $this->addError('file', 'ไม่พบข้อมูลนักศึกษาในไฟล์');
+            return;
+        }
+
+        $codes = array_keys($parsed);
+        $now = now();
+        $created = 0; $updated = 0;
+
+        try {
+            DB::transaction(function () use ($parsed, $codes, $subject, $now, &$created, &$updated) {
+                $existing = array_flip(Student::whereIn('student_code', $codes)->pluck('student_code')->all());
+
+                $inserts = []; $upserts = [];
+                foreach ($parsed as $code => $attr) {
+                    if (isset($existing[$code])) {
+                        $upserts[] = $attr + ['updated_at' => $now];
+                        $updated++;
+                    } else {
+                        // bulk insert ข้าม cast → hash เอง (rounds 10: default pw = รหัสนศ. ต้องเปลี่ยนทีหลังอยู่แล้ว)
+                        $inserts[] = $attr + ['password' => Hash::make($code, ['rounds' => 10]), 'created_at' => $now, 'updated_at' => $now];
+                        $created++;
+                    }
                 }
-                DB::commit();
-            } catch (\Throwable $e) {
-                DB::rollBack();
-                $this->addError('file', 'นำเข้าไม่สำเร็จ: ' . $e->getMessage());
-                return;
-            }
+
+                foreach (array_chunk($inserts, 100) as $batch) {
+                    Student::insert($batch);
+                }
+                foreach (array_chunk($upserts, 100) as $batch) {
+                    Student::upsert($batch, ['student_code'],
+                        ['full_name', 'email', 'faculty', 'major', 'program', 'study_group', 'updated_at']);
+                }
+
+                // ลงทะเบียนทั้งหมดครั้งเดียว (ไม่ใช่ราย row)
+                $ids = Student::whereIn('student_code', $codes)->pluck('id')->all();
+                $subject->students()->syncWithoutDetaching($ids);
+            });
+        } catch (\Throwable $e) {
+            $this->addError('file', 'นำเข้าไม่สำเร็จ: ' . $e->getMessage());
+            return;
         }
 
         $this->reset('file');
