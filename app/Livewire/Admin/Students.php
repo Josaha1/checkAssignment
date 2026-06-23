@@ -147,7 +147,8 @@ class Students extends Component
                 $inserts = []; $upserts = [];
                 foreach ($parsed as $code => $attr) {
                     if (isset($existing[$code])) {
-                        $upserts[] = $attr + ['updated_at' => $now];
+                        // ต้องใส่ password ใน candidate tuple ด้วย — Postgres ตรวจ NOT NULL ก่อน resolve ON CONFLICT (ไม่ใส่ = 23502)
+                        $upserts[] = $attr + ['password' => Hash::make($code, ['rounds' => 10]), 'updated_at' => $now];
                         $updated++;
                     } else {
                         // bulk insert ข้าม cast → hash เอง (rounds 10: default pw = รหัสนศ. ต้องเปลี่ยนทีหลังอยู่แล้ว)
@@ -161,7 +162,7 @@ class Students extends Component
                 }
                 foreach (array_chunk($upserts, 100) as $batch) {
                     Student::upsert($batch, ['student_code'],
-                        ['full_name', 'email', 'faculty', 'major', 'program', 'study_group', 'updated_at']);
+                        ['full_name', 'email', 'faculty', 'major', 'program', 'study_group', 'password', 'updated_at']);
                 }
 
                 // ลงทะเบียนทั้งหมดครั้งเดียว (ไม่ใช่ราย row)
