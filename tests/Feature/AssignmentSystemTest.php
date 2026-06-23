@@ -254,6 +254,43 @@ it('แอดมินนำเข้าใบลงทะเบียน xlsx �
     @unlink($path);
 });
 
+it('นำเข้าซ้ำ (นักศึกษามีอยู่แล้ว) ไม่ติด NOT NULL password + รีเซ็ตรหัสเป็นรหัสนักศึกษา', function () {
+    $admin = User::factory()->create();
+
+    // นศ.มีอยู่ก่อนแล้ว (ชื่อ/อีเมล/รหัสผ่านเดิม) → import รอบนี้ต้องวิ่ง upsert path
+    Student::create([
+        'student_code' => '67078724',
+        'full_name' => 'ชื่อเก่า',
+        'email' => 'old@spulive.net',
+        'password' => 'รหัสที่นศเปลี่ยนเอง',
+    ]);
+
+    $path = makeRosterXlsx();
+    $file = UploadedFile::fake()->createWithContent('roster.xlsx', file_get_contents($path));
+
+    Livewire::actingAs($admin)
+        ->test(Students::class)
+        ->set('file', $file)
+        ->call('import')
+        ->assertHasNoErrors(); // ก่อนแก้: upsert ไม่มี password → SQLSTATE 23502 → addError('file')
+
+    expect(Student::count())->toBe(2); // 67078724 ถูก update, 67089254 ถูก insert
+
+    $existing = Student::where('student_code', '67078724')->first();
+    expect($existing->full_name)->toBe('นาย พิพัฒน์ สงค์มี'); // update ทับชื่อเก่า
+    expect($existing->email)->toBe('piphat.son@spulive.net');
+    expect(Hash::check('67078724', $existing->password))->toBeTrue();   // รีเซ็ตเป็นรหัสนักศึกษา (Option B)
+    expect(Hash::check('รหัสที่นศเปลี่ยนเอง', $existing->password))->toBeFalse(); // รหัสเดิมใช้ไม่ได้แล้ว
+
+    $new = Student::where('student_code', '67089254')->first();
+    expect(Hash::check('67089254', $new->password))->toBeTrue();
+
+    $subject = Subject::where('code', 'UID10667')->first();
+    expect($existing->subjects()->whereKey($subject->id)->exists())->toBeTrue();
+
+    @unlink($path);
+});
+
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {
     $this->get('/admin')->assertRedirect(route('admin.login'));
 });
