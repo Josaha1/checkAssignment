@@ -64,7 +64,8 @@
                 </div>
             @endforeach
         </nav>
-    </div>
+    {{-- ต้องปิดด้วย </aside> ไม่ใช่ </div> — ไม่งั้น parser auto-close <div x-data> ตรงนี้ ทำให้ปุ่ม hamburger หลุดออกนอก scope sidebar กดแล้วเมนูไม่เปิดบนจอเล็ก --}}
+    </aside>
 
     {{-- Main — เว้นซ้าย 18rem ให้พ้น fixed sidebar บนจอใหญ่ --}}
     <div class="lg:pl-72 flex flex-col">
