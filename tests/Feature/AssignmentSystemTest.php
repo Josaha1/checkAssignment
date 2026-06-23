@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Admin\Assignments;
 use App\Livewire\Admin\Grading;
 use App\Livewire\Admin\Students;
 use App\Livewire\Student\Dashboard;
@@ -289,6 +290,32 @@ it('นำเข้าซ้ำ (นักศึกษามีอยู่แ�
     expect($existing->subjects()->whereKey($subject->id)->exists())->toBeTrue();
 
     @unlink($path);
+});
+
+it('เตรียมโฟลเดอร์ Drive สร้างตามกลุ่มเรียน (study_group) ไม่ขึ้น 500', function () {
+    $admin = User::factory()->create();
+    $fake = fakeDrive(); // isConnected()=true → วิ่งเข้า path สร้างโฟลเดอร์
+
+    $subject = Subject::create(['code' => 'UID10667', 'name' => 'วิชาทดสอบ']);
+    $assignment = Assignment::create(['subject_id' => $subject->id, 'title' => 'งานที่ 1', 'max_score' => 10]);
+
+    // 043 มี 2 คน → unique เหลือ 1 โฟลเดอร์/กลุ่ม
+    foreach ([['s1', '043'], ['s2', '043'], ['s3', '044']] as [$code, $grp]) {
+        $st = Student::create([
+            'student_code' => $code, 'full_name' => 'น ' . $code,
+            'email' => $code . '@spulive.net', 'password' => $code, 'study_group' => $grp,
+        ]);
+        $st->subjects()->attach($subject->id);
+    }
+
+    Livewire::actingAs($admin)
+        ->test(Assignments::class, ['subject' => $subject])
+        ->call('prepareFolders', $assignment->id) // ก่อนแก้: with('room') → RelationNotFoundException → 500
+        ->assertHasNoErrors();
+
+    expect($fake->paths)->toHaveCount(2); // 1 โฟลเดอร์ต่อกลุ่มเรียน (043, 044)
+    expect($fake->paths)->toContain('UID10667 วิชาทดสอบ/043/งานที่ 1');
+    expect($fake->paths)->toContain('UID10667 วิชาทดสอบ/044/งานที่ 1');
 });
 
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {

@@ -71,8 +71,9 @@ class Assignments extends Component
             return;
         }
 
+        // "ห้อง" = กลุ่มเรียน เก็บใน field study_group (Student ไม่มี relationship room → with('room') เดิมทำ 500)
         $rooms = Student::whereHas('subjects', fn ($q) => $q->whereKey($this->subject->id))
-            ->with('room')->get()->pluck('room.name')->filter()->unique();
+            ->pluck('study_group')->filter()->unique();
 
         $count = 0;
         foreach ($rooms as $roomName) {
