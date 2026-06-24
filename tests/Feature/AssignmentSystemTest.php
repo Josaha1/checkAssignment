@@ -460,6 +460,23 @@ it('ช่องแนบไฟล์เป็น dropzone ชัดเจน �
         ->assertSeeHtml('wire:model="file"');
 });
 
+it('นักศึกษาแนบ xls/xlsx ได้ (รวม .xls ที่จริงเป็น HTML-table) — ไม่ติด mimes', function () {
+    $ctx = makeStudentWithSubject();
+    fakeDrive();
+
+    // .xls จากระบบทะเบียนมักเป็น HTML-table → finfo เดา text/html → กฎ mimes เดิมปัดทิ้ง
+    $xls = UploadedFile::fake()->createWithContent('670001.xls', '<html><body><table><tr><td>x</td></tr></table></body></html>');
+    $xlsx = UploadedFile::fake()->create('data student.xlsx', 50, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    Livewire::actingAs($ctx['student'], 'student')
+        ->test(Submit::class, ['assignment' => $ctx['assignment']])
+        ->set('uploads', [$xls, $xlsx])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Submission::with('files')->first()->files)->toHaveCount(2);
+});
+
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {
     $this->get('/admin')->assertRedirect(route('admin.login'));
 });

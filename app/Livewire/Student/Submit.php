@@ -46,7 +46,8 @@ class Submit extends Component
         $existing = $this->submission?->files()->count() ?? 0;
         $this->validate([
             'uploads' => [$existing > 0 ? 'nullable' : 'required', 'array', 'max:' . self::MAX_FILES],
-            'uploads.*' => ['file', 'max:' . self::MAX_KB, 'mimes:' . self::ALLOWED],
+            // ใช้ extensions (เช็คนามสกุล) ไม่ใช่ mimes — .xls จากระบบทะเบียนมักเป็น HTML-table, .xlsx เดาเป็น zip → mimes ปัดทิ้ง
+            'uploads.*' => ['file', 'max:' . self::MAX_KB, 'extensions:' . self::ALLOWED],
         ], attributes: ['uploads' => 'ไฟล์งาน', 'uploads.*' => 'ไฟล์']);
 
         $drive = app(DriveStorage::class);
