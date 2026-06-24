@@ -38,14 +38,19 @@
 
                     @foreach ($row['done'] as $a)
                         @php $sub = $subs[$a->id] ?? null; @endphp
-                        <div class="px-5 py-3 flex items-center justify-between gap-3 opacity-70">
-                            <p class="text-slate-500 dark:text-slate-400 line-through truncate">{{ $a->title }}</p>
-                            @if ($sub && $sub->isGraded())
-                                <span class="badge-blue shrink-0"><x-icon name="circle-check" class="w-3 h-3" /> ตรวจแล้ว</span>
-                            @else
-                                <span class="badge-green shrink-0"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
-                            @endif
-                        </div>
+                        {{-- กดเข้าไปจัดการไฟล์ (เพิ่ม/ลบ) ได้แม้ส่ง/ตรวจแล้ว --}}
+                        <a href="{{ route('student.submit', $a) }}" wire:navigate
+                           class="px-5 py-3 flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                            <p class="text-slate-600 dark:text-slate-300 truncate">{{ $a->title }}</p>
+                            <span class="flex items-center gap-2 shrink-0">
+                                @if ($sub && $sub->isGraded())
+                                    <span class="badge-blue"><x-icon name="circle-check" class="w-3 h-3" /> ตรวจแล้ว</span>
+                                @else
+                                    <span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
+                                @endif
+                                <x-icon name="chevron-down" class="w-4 h-4 text-slate-300 -rotate-90" />
+                            </span>
+                        </a>
                     @endforeach
 
                     @if ($row['pending']->isEmpty() && $row['done']->isEmpty())
