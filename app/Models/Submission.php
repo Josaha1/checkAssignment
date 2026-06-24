@@ -29,6 +29,12 @@ class Submission extends Model
         return $this->hasMany(SubmissionFile::class);
     }
 
+    // ประวัติการกระทำ (ล่าสุดก่อน) — append-only
+    public function histories(): HasMany
+    {
+        return $this->hasMany(SubmissionHistory::class)->orderByDesc('id');
+    }
+
     public function assignment(): BelongsTo
     {
         return $this->belongsTo(Assignment::class);

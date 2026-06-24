@@ -46,8 +46,8 @@
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                             <tr><th class="th">รหัส</th><th class="th">ชื่อ-นามสกุล</th><th class="th">กลุ่ม</th><th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์</th></tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                            @foreach ($rows as $row)
+                        @foreach ($rows as $row)
+                            <tbody x-data="{ open: false }" class="border-t border-slate-100 dark:border-slate-800">
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                     <td class="td font-medium text-slate-900 dark:text-white">{{ $row['student']->student_code }}</td>
                                     <td class="td">{{ $row['student']->full_name }}</td>
@@ -68,10 +68,24 @@
                                                 @endforeach
                                             </div>
                                         @else — @endif
+                                        @if ($row['submission'] && $row['submission']->histories->isNotEmpty())
+                                            <button type="button" @click="open = !open" class="mt-1.5 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                                                <x-icon name="list" class="w-3.5 h-3.5" />
+                                                <span x-text="open ? 'ซ่อนประวัติ' : 'ประวัติ ({{ $row['submission']->histories->count() }})'"></span>
+                                                <span class="transition-transform" :class="open && 'rotate-180'"><x-icon name="chevron-down" class="w-3 h-3" /></span>
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
-                            @endforeach
-                        </tbody>
+                                @if ($row['submission'] && $row['submission']->histories->isNotEmpty())
+                                    <tr x-show="open" style="display:none">
+                                        <td colspan="6" class="px-5 pb-4 bg-slate-50/60 dark:bg-slate-800/20">
+                                            <x-submission-timeline :histories="$row['submission']->histories" :show-score="true" />
+                                        </td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        @endforeach
                     </table>
                 </div>
             </div>

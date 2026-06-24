@@ -6,6 +6,7 @@ use App\Contracts\DriveStorage;
 use App\Models\Assignment;
 use App\Models\Submission;
 use App\Models\SubmissionFile;
+use App\Models\SubmissionHistory;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -81,6 +82,12 @@ class Submit extends Component
                 'mime' => $file->getMimeType(),
                 'size' => $file->getSize(),
             ]);
+            SubmissionHistory::create([
+                'submission_id' => $submission->id,
+                'action' => 'uploaded',
+                'actor' => $student->full_name,
+                'detail' => $file->getClientOriginalName(),
+            ]);
         }
 
         session()->flash('ok', 'ส่งงานเรียบร้อยแล้ว');
@@ -89,15 +96,34 @@ class Submit extends Component
 
     public function removeFile(int $fileId): void
     {
-        if ($this->submission && $this->submission->score !== null) {
-            return; // ตรวจแล้วลบไม่ได้
-        }
         $file = SubmissionFile::where('submission_id', $this->submission?->id)->find($fileId);
-        if ($file) {
-            app(DriveStorage::class)->delete($file->drive_file_id);
-            $file->delete();
-            $this->submission->refresh();
+        if (! $file) {
+            return;
         }
+        $student = Auth::guard('student')->user();
+        $fileName = $file->name;
+
+        app(DriveStorage::class)->delete($file->drive_file_id);
+        $file->delete();
+
+        SubmissionHistory::create([
+            'submission_id' => $this->submission->id,
+            'action' => 'file_deleted',
+            'actor' => $student?->full_name,
+            'detail' => $fileName,
+        ]);
+
+        // ลบไฟล์ → คะแนนงานนั้นหายทันที (ลบไฟล์ใดก็ตาม) — แม้ตรวจแล้วก็ลบได้
+        if ($this->submission->score !== null) {
+            $this->submission->update(['score' => null, 'graded_at' => null]);
+            SubmissionHistory::create([
+                'submission_id' => $this->submission->id,
+                'action' => 'score_cleared',
+                'actor' => $student?->full_name,
+                'detail' => 'ลบไฟล์ ' . $fileName,
+            ]);
+        }
+        $this->submission->refresh();
     }
 
     private function clean(string $name): string

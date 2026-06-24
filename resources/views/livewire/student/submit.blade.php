@@ -27,9 +27,10 @@
                                 <div class="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2">
                                     <x-icon name="clipboard" class="w-4 h-4 text-slate-400 shrink-0" />
                                     <a href="{{ $f->url }}" target="_blank" rel="noopener" class="flex-1 text-sm text-slate-700 dark:text-slate-200 truncate hover:text-brand-600">{{ $f->name }}</a>
-                                    @if (! $submission->score)
-                                        <button wire:click="removeFile({{ $f->id }})" wire:confirm="ลบไฟล์นี้?" class="text-rose-500 hover:text-rose-600 shrink-0"><x-icon name="trash" class="w-4 h-4" /></button>
-                                    @endif
+                                    {{-- ลบได้เสมอ — ถ้าตรวจแล้ว เตือนว่าคะแนนจะหาย --}}
+                                    <button wire:click="removeFile({{ $f->id }})"
+                                            wire:confirm="{{ $submission->score !== null ? 'ลบไฟล์นี้จะทำให้คะแนนที่ได้หายไป และต้องส่งงานใหม่ — ยืนยันลบ?' : 'ลบไฟล์นี้?' }}"
+                                            class="text-rose-500 hover:text-rose-600 shrink-0"><x-icon name="trash" class="w-4 h-4" /></button>
                                 </div>
                             @endforeach
                         </div>
@@ -38,7 +39,7 @@
 
                 @if ($submission && $submission->score !== null)
                     <div class="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-                        <x-icon name="alert" class="w-5 h-5 shrink-0" /> งานนี้ถูกตรวจแล้ว ไม่สามารถแก้ไขไฟล์ได้
+                        <x-icon name="alert" class="w-5 h-5 shrink-0" /> งานนี้ถูกตรวจแล้ว — ส่งไฟล์เพิ่มไม่ได้ (หากลบไฟล์ คะแนนจะถูกล้างและต้องส่งงานใหม่)
                     </div>
                 @else
                     <form wire:submit="save" class="space-y-3">

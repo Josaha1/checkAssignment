@@ -10,6 +10,8 @@ use App\Models\Assignment;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
+use App\Models\SubmissionFile;
+use App\Models\SubmissionHistory;
 use App\Models\User;
 use App\Contracts\DriveStorage;
 use App\Services\FakeDriveStorage;
@@ -316,6 +318,115 @@ it('เตรียมโฟลเดอร์ Drive สร้างตามก
     expect($fake->paths)->toHaveCount(2); // 1 โฟลเดอร์ต่อกลุ่มเรียน (043, 044)
     expect($fake->paths)->toContain('UID10667 วิชาทดสอบ/043/งานที่ 1');
     expect($fake->paths)->toContain('UID10667 วิชาทดสอบ/044/งานที่ 1');
+});
+
+it('ส่งงานบันทึก history uploaded', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->set('uploads', [UploadedFile::fake()->create('งาน.pdf', 100, 'application/pdf')])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $sub = Submission::where('assignment_id', $assignment->id)->where('student_id', $student->id)->first();
+    expect($sub)->not->toBeNull();
+    expect($sub->histories()->where('action', 'uploaded')->where('detail', 'งาน.pdf')->exists())->toBeTrue();
+});
+
+it('นักศึกษาลบไฟล์ → คะแนนหาย + บันทึก history file_deleted + score_cleared', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now(), 'score' => 8, 'graded_at' => now()]);
+    $file = SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'fid1', 'name' => 'งาน.pdf', 'url' => 'http://x']);
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->call('removeFile', $file->id)
+        ->assertHasNoErrors();
+
+    $sub->refresh();
+    expect($sub->score)->toBeNull();                              // คะแนนหายแม้ตรวจแล้ว (ปลดล็อก)
+    expect($sub->graded_at)->toBeNull();
+    expect(SubmissionFile::find($file->id))->toBeNull();          // ไฟล์ถูกลบ
+    expect($sub->histories()->where('action', 'file_deleted')->exists())->toBeTrue();
+    expect($sub->histories()->where('action', 'score_cleared')->exists())->toBeTrue();
+});
+
+it('ลบไฟล์ใดก็เคลียร์คะแนน แม้ submission ยังเหลือไฟล์อื่น', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now(), 'score' => 9, 'graded_at' => now()]);
+    $f1 = SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'a', 'name' => 'a.pdf', 'url' => 'http://a']);
+    $f2 = SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'b', 'name' => 'b.pdf', 'url' => 'http://b']);
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->call('removeFile', $f1->id);
+
+    $sub->refresh();
+    expect($sub->score)->toBeNull();                             // คะแนนหายทันที
+    expect(SubmissionFile::find($f2->id))->not->toBeNull();      // ไฟล์อื่นยังอยู่
+});
+
+it('ให้คะแนนบันทึก history graded + กดบันทึกซ้ำค่าเดิมไม่เพิ่มประวัติซ้ำ', function () {
+    $admin = User::factory()->create();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+
+    $c = Livewire::actingAs($admin)->test(Grading::class)
+        ->set('scores', [$sub->id => '8'])
+        ->call('saveScores');
+
+    $sub->refresh();
+    expect((float) $sub->score)->toBe(8.0);
+    expect($sub->histories()->where('action', 'graded')->count())->toBe(1);
+
+    $c->call('saveScores'); // ค่าเดิม → ไม่เพิ่ม
+    expect($sub->histories()->where('action', 'graded')->count())->toBe(1);
+});
+
+it('หน้า History นักศึกษา แสดง timeline แต่ไม่โชว์คะแนน', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now(), 'score' => 88, 'graded_at' => now()]);
+    SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'a', 'name' => 'a.pdf', 'url' => 'http://a']);
+    SubmissionHistory::create(['submission_id' => $sub->id, 'action' => 'uploaded', 'actor' => $student->full_name, 'detail' => 'a.pdf']);
+    SubmissionHistory::create(['submission_id' => $sub->id, 'action' => 'graded', 'actor' => 'อาจารย์', 'detail' => '88']);
+
+    Livewire::actingAs($student, 'student')->test(\App\Livewire\Student\History::class)
+        ->assertOk()
+        ->assertSee('อัปโหลดไฟล์')
+        ->assertSee('ตรวจให้คะแนนแล้ว')   // label graded ฝั่งนักศึกษา
+        ->assertDontSee('88');             // ❗ ห้ามโชว์เลขคะแนนให้นักศึกษา
+});
+
+it('หน้า SubmissionBoard แอดมิน แสดง timeline + โชว์คะแนนใน graded', function () {
+    $admin = User::factory()->create();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now(), 'score' => 88, 'graded_at' => now()]);
+    SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'a', 'name' => 'a.pdf', 'url' => 'http://a']);
+    SubmissionHistory::create(['submission_id' => $sub->id, 'action' => 'graded', 'actor' => 'อาจารย์', 'detail' => '88']);
+
+    Livewire::actingAs($admin)->test(\App\Livewire\Admin\SubmissionBoard::class)
+        ->set('subjectId', $assignment->subject_id)
+        ->set('assignmentId', $assignment->id)
+        ->assertOk()
+        ->assertSee('ให้คะแนน')   // label graded ฝั่งแอดมิน
+        ->assertSee('88');         // แอดมินเห็นคะแนนได้
+});
+
+it('หน้าส่งงาน: ตรวจแล้วยังมีปุ่มลบไฟล์ + เตือนคะแนนหาย (feature เข้าถึงได้)', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now(), 'score' => 8, 'graded_at' => now()]);
+    $file = SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'a', 'name' => 'a.pdf', 'url' => 'http://a']);
+
+    Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment])
+        ->assertOk()
+        ->assertSeeHtml('wire:click="removeFile(' . $file->id . ')"') // ปุ่มลบยังอยู่แม้ตรวจแล้ว
+        ->assertSee('คะแนนจะถูกล้าง');                                // เตือนผลลัพธ์
 });
 
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {
