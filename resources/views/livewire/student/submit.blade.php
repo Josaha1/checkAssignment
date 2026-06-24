@@ -45,25 +45,14 @@
                     <form wire:submit="save" class="space-y-3">
                         <div>
                             <label class="label">{{ $submission?->files->isNotEmpty() ? 'แนบไฟล์เพิ่ม' : 'แนบไฟล์งาน' }}</label>
-                            <input type="file" wire:model="uploads" multiple
-                                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
-                                   class="block w-full text-sm text-slate-600 dark:text-slate-300 file:mr-3 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-brand-50 file:text-brand-700 file:font-medium dark:file:bg-brand-500/15 dark:file:text-brand-300">
-                            <p class="text-xs text-slate-400 mt-1.5">รองรับ pdf, word, ppt, excel, รูป, zip · ไม่เกิน 20MB/ไฟล์ · สูงสุด 10 ไฟล์</p>
+                            <x-file-dropzone model="uploads" multiple accent="brand"
+                                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
+                                hint="รองรับ pdf, word, ppt, excel, รูป, zip · ไม่เกิน 20MB/ไฟล์ · สูงสุด 10 ไฟล์" />
                             @error('uploads') <p class="mt-1 flex items-center gap-1.5 text-sm text-rose-600"><x-icon name="alert" class="w-4 h-4" /> {{ $message }}</p> @enderror
                             @error('uploads.*') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
                         </div>
 
-                        {{-- preview ไฟล์ที่เลือก --}}
                         <div wire:loading wire:target="uploads" class="text-sm text-slate-400">กำลังเตรียมไฟล์...</div>
-                        @if ($uploads)
-                            <div class="space-y-1.5">
-                                @foreach ($uploads as $u)
-                                    <div class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                        <x-icon name="check" class="w-4 h-4 text-emerald-500" /> {{ $u->getClientOriginalName() }}
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
 
                         <button type="submit" class="btn-primary w-full" wire:loading.attr="disabled" wire:target="save,uploads">
                             <span wire:loading.remove wire:target="save"><x-icon name="upload" class="w-4 h-4" /> ส่งงาน</span>
