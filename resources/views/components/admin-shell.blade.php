@@ -1,7 +1,7 @@
 @props(['title' => 'แดชบอร์ด'])
 
 @php
-    $ungraded = \App\Models\Submission::whereNull('score')->count();
+    $ungraded = \App\Models\Submission::whereNotNull('submitted_at')->whereNull('score')->count();
     $groups = [
         'ภาพรวม' => [
             ['admin.dashboard', 'แดชบอร์ด', 'dashboard'],

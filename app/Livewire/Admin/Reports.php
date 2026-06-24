@@ -16,7 +16,7 @@ class Reports extends Component
         $subjects = Subject::withCount(['assignments', 'students'])->orderBy('code')->get()
             ->map(function ($s) {
                 $assignmentIds = $s->assignments()->pluck('id');
-                $s->submission_total = Submission::whereIn('assignment_id', $assignmentIds)->count();
+                $s->submission_total = Submission::whereIn('assignment_id', $assignmentIds)->whereNotNull('submitted_at')->count();
                 $s->graded_total = Submission::whereIn('assignment_id', $assignmentIds)->whereNotNull('score')->count();
                 return $s;
             });
@@ -29,7 +29,7 @@ class Reports extends Component
                     $scores = Submission::where('assignment_id', $a->id)->whereNotNull('score');
                     return [
                         'assignment' => $a,
-                        'submitted' => Submission::where('assignment_id', $a->id)->count(),
+                        'submitted' => Submission::where('assignment_id', $a->id)->whereNotNull('submitted_at')->count(),
                         'graded' => (clone $scores)->count(),
                         'avg' => round((clone $scores)->avg('score') ?? 0, 2),
                         'max' => (clone $scores)->max('score'),

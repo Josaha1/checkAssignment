@@ -10,7 +10,8 @@ class Subjects extends Component
     public function render()
     {
         $student = Auth::guard('student')->user()->load(['subjects.assignments', 'submissions']);
-        $subs = $student->submissions->keyBy('assignment_id'); // ใช้เช็คสถานะ ส่งแล้ว/ตรวจแล้ว ราย assignment
+        // เฉพาะที่ยังส่งอยู่ — ลบไฟล์ครบ submitted_at=null → ค้าง (ตรงกับหน้าอื่น)
+        $subs = $student->submissions->whereNotNull('submitted_at')->keyBy('assignment_id');
         $submittedIds = $subs->keys()->all();
 
         $subjects = $student->subjects->map(function ($subject) use ($submittedIds) {
