@@ -477,6 +477,63 @@ it('นักศึกษาแนบ xls/xlsx ได้ (รวม .xls ที�
     expect(Submission::with('files')->first()->files)->toHaveCount(2);
 });
 
+it('ลบไฟล์ครบ → submission เป็นยังไม่ส่ง (submitted_at=null) แต่ record+history คงอยู่', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+    $f = SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'a', 'name' => 'a.pdf', 'url' => 'http://a']);
+    SubmissionHistory::create(['submission_id' => $sub->id, 'action' => 'uploaded', 'actor' => 'นศ', 'detail' => 'a.pdf']);
+
+    Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment])
+        ->call('removeFile', $f->id)->assertHasNoErrors();
+
+    $sub->refresh();
+    expect(Submission::find($sub->id))->not->toBeNull();              // record คงอยู่
+    expect($sub->submitted_at)->toBeNull();                          // ยังไม่ส่ง
+    expect($sub->files()->count())->toBe(0);
+    expect($sub->histories()->count())->toBeGreaterThanOrEqual(2);   // uploaded + file_deleted
+});
+
+it('ลบไฟล์บางส่วน (ยังเหลือ) → ยังเป็นส่งแล้ว (submitted_at คงอยู่)', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+    $f1 = SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'a', 'name' => 'a.pdf', 'url' => 'http://a']);
+    SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'b', 'name' => 'b.pdf', 'url' => 'http://b']);
+
+    Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment])
+        ->call('removeFile', $f1->id);
+
+    $sub->refresh();
+    expect($sub->submitted_at)->not->toBeNull(); // ยังส่งอยู่
+    expect($sub->files()->count())->toBe(1);
+});
+
+it('หลังลบไฟล์ครบ ทุกหน้าขึ้น "ยังไม่ส่ง" ตรงกัน (dashboard/board/history)', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment, 'subject' => $subject] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+    $f = SubmissionFile::create(['submission_id' => $sub->id, 'drive_file_id' => 'a', 'name' => 'a.pdf', 'url' => 'http://a']);
+
+    Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment])->call('removeFile', $f->id);
+
+    Livewire::actingAs($student, 'student')->test(Dashboard::class)
+        ->assertViewHas('pendingTotal', 1); // นักศึกษา: กลับมาค้าง
+
+    $admin = User::factory()->create();
+    Livewire::actingAs($admin)->test(\App\Livewire\Admin\SubmissionBoard::class)
+        ->set('subjectId', $subject->id)->set('assignmentId', $assignment->id)
+        ->assertViewHas('submittedCount', 0)   // แอดมิน: ไม่นับว่าส่ง
+        ->assertViewHas('missingCount', 1);
+
+    Livewire::actingAs($admin)->test(\App\Livewire\Admin\Dashboard::class) // สถิติ/แบดจ์รอตรวจ ก็ไม่นับงานว่าง
+        ->assertViewHas('stats', fn ($stats) => $stats['submissions'] === 0 && $stats['ungraded'] === 0);
+
+    Livewire::actingAs($student, 'student')->test(\App\Livewire\Student\History::class)
+        ->assertSee('ยังไม่ส่ง')   // ประวัติ: สถานะตรงกัน
+        ->assertSee('ลบไฟล์');     // แต่ timeline ยังเก็บ audit
+});
+
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {
     $this->get('/admin')->assertRedirect(route('admin.login'));
 });

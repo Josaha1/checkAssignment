@@ -39,6 +39,7 @@ class SubmissionBoard extends Component
 
             $subs = Submission::with('files', 'histories')
                 ->where('assignment_id', $this->assignmentId)
+                ->whereNotNull('submitted_at') // ลบไฟล์ครบ → ไม่นับว่าส่ง (สถานะตรงกับหน้าอื่น)
                 ->whereIn('student_id', $students->pluck('id'))->get()->keyBy('student_id');
 
             $rows = $students->map(fn ($st) => [

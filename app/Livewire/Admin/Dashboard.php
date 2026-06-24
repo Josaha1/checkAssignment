@@ -18,8 +18,8 @@ class Dashboard extends Component
             'subjects' => Subject::count(),
             'groups' => Student::whereNotNull('study_group')->distinct('study_group')->count('study_group'),
             'assignments' => Assignment::count(),
-            'submissions' => Submission::count(),
-            'ungraded' => Submission::whereNull('score')->count(),
+            'submissions' => Submission::whereNotNull('submitted_at')->count(),
+            'ungraded' => Submission::whereNotNull('submitted_at')->whereNull('score')->count(),
         ];
 
         // กราฟแท่ง: การส่งงาน 7 วันล่าสุด
@@ -35,6 +35,7 @@ class Dashboard extends Component
         ];
 
         $recent = Submission::with(['student', 'assignment.subject'])
+            ->whereNotNull('submitted_at')
             ->latest('submitted_at')->limit(8)->get();
 
         return view('livewire.admin.dashboard', compact('stats', 'chartDays', 'recent'));

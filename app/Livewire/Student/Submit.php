@@ -124,6 +124,11 @@ class Submit extends Component
                 'detail' => 'ลบไฟล์ ' . $fileName,
             ]);
         }
+
+        // ลบไฟล์ครบ (0 ไฟล์) → ถือว่ายังไม่ส่ง: เคลียร์ submitted_at ให้สถานะทุกหน้าตรงกัน (เก็บ record+history ไว้)
+        if ($this->submission->files()->count() === 0) {
+            $this->submission->update(['submitted_at' => null]);
+        }
         $this->submission->refresh();
     }
 

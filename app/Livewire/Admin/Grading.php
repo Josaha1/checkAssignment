@@ -63,6 +63,7 @@ class Grading extends Component
                 ->orderBy('student_code')->get();
 
             $subs = Submission::with('files')
+                ->whereNotNull('submitted_at') // ลบไฟล์ครบ → ไม่นับว่าส่ง (ไม่มีอะไรให้ตรวจ)
                 ->whereIn('assignment_id', $assignments->pluck('id'))
                 ->whereIn('student_id', $students->pluck('id'))->get();
 

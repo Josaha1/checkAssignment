@@ -24,7 +24,9 @@
                                     @else <span class="text-slate-400">—</span> @endif
                                 </td>
                                 <td class="td">
-                                    @if ($s->isGraded())
+                                    @if (! $s->submitted_at)
+                                        <span class="badge-amber"><x-icon name="clock" class="w-3 h-3" /> ยังไม่ส่ง</span> {{-- ลบไฟล์ครบแล้ว --}}
+                                    @elseif ($s->isGraded())
                                         <span class="badge-blue"><x-icon name="circle-check" class="w-3 h-3" /> ตรวจแล้ว</span>
                                     @else
                                         <span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
