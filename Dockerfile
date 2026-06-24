@@ -26,6 +26,12 @@ COPY --from=assets /app/public/build ./public/build
 RUN rm -f bootstrap/cache/*.php \
  && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
+# frankenphp binary มี file-capability (setcap) → runtime ของ Render จำกัด cap ทำให้ exec ไม่ได้ (EPERM = exit 126)
+# cp ทับตัวเองเพื่อลบ cap xattr — เรา bind $PORT (พอร์ตสูง) + Render ทำ TLS ที่ edge จึงไม่ต้องใช้ cap
+RUN cp /usr/local/bin/frankenphp /tmp/frankenphp \
+ && cp /tmp/frankenphp /usr/local/bin/frankenphp \
+ && rm /tmp/frankenphp
+
 USER www-data
 ENV PHP_OPCACHE_ENABLE=1
 
