@@ -445,6 +445,21 @@ it('นักศึกษากดเข้างานที่ส่งแล�
         ->assertSeeHtml('href="' . $url . '"');
 });
 
+it('ช่องแนบไฟล์เป็น dropzone ชัดเจน ทั้งนักศึกษา + แอดมิน', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment])
+        ->assertOk()
+        ->assertSee('คลิกเพื่อเลือกไฟล์')
+        ->assertSeeHtml('wire:model="uploads"');
+
+    $admin = User::factory()->create();
+    Livewire::actingAs($admin)->test(Students::class)
+        ->assertOk()
+        ->assertSee('คลิกเพื่อเลือกไฟล์')
+        ->assertSeeHtml('wire:model="file"');
+});
+
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {
     $this->get('/admin')->assertRedirect(route('admin.login'));
 });
