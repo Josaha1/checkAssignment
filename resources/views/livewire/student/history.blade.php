@@ -6,8 +6,8 @@
                     <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr><th class="th">วิชา · งาน</th><th class="th">ส่งเมื่อ</th><th class="th">ไฟล์</th><th class="th">สถานะ</th></tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        @forelse ($submissions as $s)
+                    @forelse ($submissions as $s)
+                        <tbody x-data="{ open: false }" class="border-t border-slate-100 dark:border-slate-800">
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                 <td class="td">
                                     <p class="font-medium text-slate-900 dark:text-white">{{ $s->assignment?->title }}</p>
@@ -29,15 +29,31 @@
                                     @else
                                         <span class="badge-green"><x-icon name="check" class="w-3 h-3" /> ส่งแล้ว</span>
                                     @endif
+                                    @if ($s->histories->isNotEmpty())
+                                        <button type="button" @click="open = !open" class="mt-1.5 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                                            <x-icon name="list" class="w-3.5 h-3.5" />
+                                            <span x-text="open ? 'ซ่อนประวัติ' : 'ประวัติ ({{ $s->histories->count() }})'"></span>
+                                            <span class="transition-transform" :class="open && 'rotate-180'"><x-icon name="chevron-down" class="w-3 h-3" /></span>
+                                        </button>
+                                    @endif
                                 </td>
                             </tr>
-                        @empty
+                            @if ($s->histories->isNotEmpty())
+                                <tr x-show="open" style="display:none">
+                                    <td colspan="4" class="px-5 pb-4 bg-slate-50/60 dark:bg-slate-800/20">
+                                        <x-submission-timeline :histories="$s->histories" :show-score="false" />
+                                    </td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    @empty
+                        <tbody>
                             <tr><td colspan="4" class="td text-center text-slate-400 py-12">
                                 <x-icon name="clock" class="w-10 h-10 mx-auto mb-2 opacity-40" />
                                 ยังไม่มีประวัติการส่งงาน
                             </td></tr>
-                        @endforelse
-                    </tbody>
+                        </tbody>
+                    @endforelse
                 </table>
             </div>
         </div>

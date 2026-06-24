@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Submission;
+use App\Models\SubmissionHistory;
 use Livewire\Component;
 
 class Grading extends Component
@@ -20,17 +21,25 @@ class Grading extends Component
 
     public function saveScores(): void
     {
+        $actor = auth('web')->user()?->name;
         foreach ($this->scores as $submissionId => $value) {
             $submission = Submission::find($submissionId);
             if (! $submission) {
                 continue;
             }
-            // ว่าง = ล้างคะแนนกลับเป็นยังไม่ตรวจ
+            // ว่าง = ล้างคะแนนกลับเป็นยังไม่ตรวจ (log เฉพาะที่เคยมีคะแนน — กัน history ซ้ำทุกครั้งที่กดบันทึก)
             if ($value === '' || $value === null) {
-                $submission->update(['score' => null, 'graded_at' => null]);
+                if ($submission->score !== null) {
+                    $submission->update(['score' => null, 'graded_at' => null]);
+                    SubmissionHistory::create(['submission_id' => $submission->id, 'action' => 'score_cleared', 'actor' => $actor]);
+                }
                 continue;
             }
-            $submission->update(['score' => (float) $value, 'graded_at' => now()]);
+            $new = (float) $value;
+            if ($submission->score === null || (float) $submission->score !== $new) { // เปลี่ยนจริงเท่านั้น
+                $submission->update(['score' => $new, 'graded_at' => now()]);
+                SubmissionHistory::create(['submission_id' => $submission->id, 'action' => 'graded', 'actor' => $actor, 'detail' => (string) $new]);
+            }
         }
         session()->flash('ok', 'บันทึกคะแนนเรียบร้อย');
     }
