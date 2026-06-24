@@ -429,6 +429,22 @@ it('หน้าส่งงาน: ตรวจแล้วยังมีป�
         ->assertSee('คะแนนจะถูกล้าง');                                // เตือนผลลัพธ์
 });
 
+it('นักศึกษากดเข้างานที่ส่งแล้วได้ (มีลิงก์ไปหน้าส่งงาน) ทั้ง dashboard + subjects', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]); // ส่งแล้ว
+
+    $url = route('student.submit', $assignment);
+
+    Livewire::actingAs($student, 'student')->test(\App\Livewire\Student\Dashboard::class)
+        ->assertOk()
+        ->assertSeeHtml('href="' . $url . '"'); // งานที่ส่งแล้วต้องยังกดเข้าได้
+
+    Livewire::actingAs($student, 'student')->test(\App\Livewire\Student\Subjects::class)
+        ->assertOk()
+        ->assertSeeHtml('href="' . $url . '"');
+});
+
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {
     $this->get('/admin')->assertRedirect(route('admin.login'));
 });
