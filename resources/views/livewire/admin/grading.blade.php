@@ -29,7 +29,7 @@
                     <table class="min-w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                             <tr>
-                                <th class="th sticky left-0 bg-slate-50 dark:bg-slate-800 z-10">นักศึกษา</th>
+                                <x-th-sort column="student_code" :sort-by="$sortBy" :sort-dir="$sortDir" class="sticky left-0 bg-slate-50 dark:bg-slate-800 z-10">นักศึกษา</x-th-sort>
                                 @foreach ($assignments as $a)
                                     <th class="th text-center whitespace-nowrap">
                                         {{ $a->title }}

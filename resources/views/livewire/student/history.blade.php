@@ -1,10 +1,21 @@
 <div>
     <x-student-shell title="ประวัติการส่งงาน">
         <div class="card overflow-hidden">
+            <div class="p-4 border-b border-slate-100 dark:border-slate-800">
+                <select wire:model.live="subjectId" class="select !w-auto min-w-[200px]">
+                    <option value="">ทุกวิชา</option>
+                    @foreach ($subjects as $sub)<option value="{{ $sub->id }}">{{ $sub->code }} · {{ $sub->name }}</option>@endforeach
+                </select>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full">
                     <thead class="bg-slate-50 dark:bg-slate-800/50">
-                        <tr><th class="th">วิชา · งาน</th><th class="th">ส่งเมื่อ</th><th class="th">ไฟล์</th><th class="th">สถานะ</th></tr>
+                        <tr>
+                            <x-th-sort column="subject" :sort-by="$sortBy" :sort-dir="$sortDir">วิชา · งาน</x-th-sort>
+                            <x-th-sort column="submitted_at" :sort-by="$sortBy" :sort-dir="$sortDir">ส่งเมื่อ</x-th-sort>
+                            <th class="th">ไฟล์</th>
+                            <x-th-sort column="status" :sort-by="$sortBy" :sort-dir="$sortDir">สถานะ</x-th-sort>
+                        </tr>
                     </thead>
                     @forelse ($submissions as $s)
                         <tbody x-data="{ open: false }" class="border-t border-slate-100 dark:border-slate-800">

@@ -11,6 +11,19 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
+    public string $sortBy = 'submitted_at';
+    public string $sortDir = 'desc';
+
+    // เรียง 8 รายการล่าสุดในหน่วยความจำ (คอลัมน์ student/subject/สถานะ เป็น relation/derived)
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['student_code', 'subject', 'submitted_at', 'status'], true)) {
+            return;
+        }
+        $this->sortDir = $this->sortBy === $column && $this->sortDir === 'asc' ? 'desc' : 'asc';
+        $this->sortBy = $column;
+    }
+
     public function render()
     {
         $stats = [
@@ -36,7 +49,13 @@ class Dashboard extends Component
 
         $recent = Submission::with(['student', 'assignment.subject'])
             ->whereNotNull('submitted_at')
-            ->latest('submitted_at')->limit(8)->get();
+            ->latest('submitted_at')->limit(8)->get()
+            ->sortBy(fn ($s) => match ($this->sortBy) {
+                'student_code' => $s->student->student_code,
+                'subject' => $s->assignment?->subject?->code,
+                'status' => $s->score !== null ? 1 : 0,
+                default => $s->submitted_at,
+            }, SORT_REGULAR, $this->sortDir === 'desc')->values();
 
         return view('livewire.admin.dashboard', compact('stats', 'chartDays', 'recent'));
     }

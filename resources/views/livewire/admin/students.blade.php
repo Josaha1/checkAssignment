@@ -79,7 +79,12 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
-                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-นามสกุล</th><th class="th">กลุ่ม</th><th class="th text-right">จัดการ</th></tr>
+                            <tr>
+                                <x-th-sort column="student_code" :sort-by="$sortBy" :sort-dir="$sortDir">รหัส</x-th-sort>
+                                <x-th-sort column="full_name" :sort-by="$sortBy" :sort-dir="$sortDir">ชื่อ-นามสกุล</x-th-sort>
+                                <x-th-sort column="study_group" :sort-by="$sortBy" :sort-dir="$sortDir">กลุ่ม</x-th-sort>
+                                <th class="th text-right">จัดการ</th>
+                            </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @forelse ($students as $s)

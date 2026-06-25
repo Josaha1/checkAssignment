@@ -25,10 +25,21 @@
             </form>
 
             <div class="lg:col-span-2 card overflow-hidden">
+                <div class="p-4 border-b border-slate-100 dark:border-slate-800">
+                    <div class="relative max-w-xs">
+                        <x-icon name="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input type="text" wire:model.live.debounce.300ms="search" placeholder="ค้นหารหัส/ชื่อวิชา" class="input pl-9">
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
-                            <tr><th class="th">วิชา</th><th class="th">งาน</th><th class="th">นักศึกษา</th><th class="th text-right">จัดการ</th></tr>
+                            <tr>
+                                <x-th-sort column="code" :sort-by="$sortBy" :sort-dir="$sortDir">วิชา</x-th-sort>
+                                <x-th-sort column="assignments_count" :sort-by="$sortBy" :sort-dir="$sortDir">งาน</x-th-sort>
+                                <x-th-sort column="students_count" :sort-by="$sortBy" :sort-dir="$sortDir">นักศึกษา</x-th-sort>
+                                <th class="th text-right">จัดการ</th>
+                            </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @forelse ($subjects as $s)

@@ -13,10 +13,22 @@ class SubmissionBoard extends Component
     public ?int $subjectId = null;
     public ?int $assignmentId = null;
     public ?string $group = null;
+    public string $sortBy = 'student_code';
+    public string $sortDir = 'asc';
 
     public function updatedSubjectId(): void
     {
         $this->assignmentId = null;
+    }
+
+    // เรียงได้เฉพาะคอลัมน์นักศึกษา (สถานะ/เวลา/ไฟล์ มาจาก submission คนละ query)
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['student_code', 'full_name', 'study_group'], true)) {
+            return;
+        }
+        $this->sortDir = $this->sortBy === $column && $this->sortDir === 'asc' ? 'desc' : 'asc';
+        $this->sortBy = $column;
     }
 
     public function render()
@@ -35,7 +47,7 @@ class SubmissionBoard extends Component
             $students = Student::query()
                 ->whereHas('subjects', fn ($q) => $q->whereKey($this->subjectId))
                 ->when($this->group, fn ($q) => $q->where('study_group', $this->group))
-                ->orderBy('student_code')->get();
+                ->orderBy($this->sortBy, $this->sortDir)->get();
 
             $subs = Submission::with('files', 'histories')
                 ->where('assignment_id', $this->assignmentId)

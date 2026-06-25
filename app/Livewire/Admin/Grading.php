@@ -13,10 +13,22 @@ class Grading extends Component
     public ?int $subjectId = null;
     public ?string $group = null;
     public array $scores = []; // submissionId => score
+    public string $sortBy = 'student_code';
+    public string $sortDir = 'asc';
 
     public function updatedSubjectId(): void
     {
         $this->scores = [];
+    }
+
+    // เรียงได้เฉพาะคอลัมน์นักศึกษา (matrix คะแนนต่องานเรียงไม่ได้)
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['student_code', 'full_name'], true)) {
+            return;
+        }
+        $this->sortDir = $this->sortBy === $column && $this->sortDir === 'asc' ? 'desc' : 'asc';
+        $this->sortBy = $column;
     }
 
     public function saveScores(): void
@@ -60,7 +72,7 @@ class Grading extends Component
             $students = Student::query()
                 ->whereHas('subjects', fn ($q) => $q->whereKey($this->subjectId))
                 ->when($this->group, fn ($q) => $q->where('study_group', $this->group))
-                ->orderBy('student_code')->get();
+                ->orderBy($this->sortBy, $this->sortDir)->get();
 
             $subs = Submission::with('files')
                 ->whereNotNull('submitted_at') // ลบไฟล์ครบ → ไม่นับว่าส่ง (ไม่มีอะไรให้ตรวจ)

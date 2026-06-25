@@ -28,10 +28,20 @@
             </form>
 
             <div class="lg:col-span-2 card overflow-hidden">
+                <div class="p-4 border-b border-slate-100 dark:border-slate-800">
+                    <div class="relative max-w-xs">
+                        <x-icon name="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input type="text" wire:model.live.debounce.300ms="search" placeholder="ค้นหาชื่อ/อีเมล" class="input pl-9">
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
-                            <tr><th class="th">ชื่อ</th><th class="th">อีเมล</th><th class="th text-right">จัดการ</th></tr>
+                            <tr>
+                                <x-th-sort column="name" :sort-by="$sortBy" :sort-dir="$sortDir">ชื่อ</x-th-sort>
+                                <x-th-sort column="email" :sort-by="$sortBy" :sort-dir="$sortDir">อีเมล</x-th-sort>
+                                <th class="th text-right">จัดการ</th>
+                            </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @foreach ($admins as $u)

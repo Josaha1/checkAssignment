@@ -11,6 +11,18 @@ class Enroll extends Component
     public Subject $subject;
     public ?string $groupFilter = null;
     public array $enrolled = []; // student_id => true
+    public string $sortBy = 'student_code';
+    public string $sortDir = 'asc';
+
+    // กดหัวตาราง: คอลัมน์เดิม=สลับทิศ, ใหม่=asc — whitelist กัน inject ผ่าน orderBy
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['student_code', 'full_name', 'study_group'], true)) {
+            return;
+        }
+        $this->sortDir = $this->sortBy === $column && $this->sortDir === 'asc' ? 'desc' : 'asc';
+        $this->sortBy = $column;
+    }
 
     public function mount(Subject $subject): void
     {
@@ -47,7 +59,7 @@ class Enroll extends Component
     {
         $students = Student::query()
             ->when($this->groupFilter, fn ($q) => $q->where('study_group', $this->groupFilter))
-            ->orderBy('student_code')->get();
+            ->orderBy($this->sortBy, $this->sortDir)->get();
 
         return view('livewire.admin.enroll', [
             'students' => $students,

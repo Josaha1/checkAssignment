@@ -15,6 +15,20 @@ class Admins extends Component
     public string $password = '';
     public ?int $editingId = null;
 
+    public string $search = '';     // กรองชื่อ/อีเมล
+    public string $sortBy = 'name';
+    public string $sortDir = 'asc';
+
+    // กดหัวตาราง: คอลัมน์เดิม=สลับทิศ, ใหม่=asc — whitelist กัน inject ผ่าน orderBy
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['name', 'email'], true)) {
+            return;
+        }
+        $this->sortDir = $this->sortBy === $column && $this->sortDir === 'asc' ? 'desc' : 'asc';
+        $this->sortBy = $column;
+    }
+
     public function save(): void
     {
         $data = $this->validate([
@@ -63,7 +77,11 @@ class Admins extends Component
     public function render()
     {
         return view('livewire.admin.admins', [
-            'admins' => User::orderBy('name')->get(),
+            'admins' => User::query()
+                ->when($this->search, fn ($q) => $q
+                    ->where('name', 'like', "%{$this->search}%")
+                    ->orWhere('email', 'like', "%{$this->search}%"))
+                ->orderBy($this->sortBy, $this->sortDir)->get(),
             'currentId' => Auth::id(),
         ]);
     }
