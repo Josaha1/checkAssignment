@@ -26,8 +26,21 @@ class Students extends Component
     public ?int $editingId = null;
 
     public string $search = '';
+    public string $sortBy = 'student_code';
+    public string $sortDir = 'asc';
     public $file; // ไฟล์ xlsx อัปโหลด
     public array $importResult = [];
+
+    // กดหัวตาราง: คอลัมน์เดิม=สลับทิศ, ใหม่=asc — whitelist กัน inject ผ่าน orderBy
+    public function sort(string $column): void
+    {
+        if (! in_array($column, ['student_code', 'full_name', 'study_group'], true)) {
+            return;
+        }
+        $this->sortDir = $this->sortBy === $column && $this->sortDir === 'asc' ? 'desc' : 'asc';
+        $this->sortBy = $column;
+        $this->resetPage(); // เปลี่ยนการเรียงต้องกลับหน้าแรก
+    }
 
     public function save(): void
     {
@@ -247,7 +260,7 @@ class Students extends Component
                 ->where('student_code', 'like', "%{$this->search}%")
                 ->orWhere('full_name', 'like', "%{$this->search}%")
                 ->orWhere('email', 'like', "%{$this->search}%"))
-            ->orderBy('student_code')
+            ->orderBy($this->sortBy, $this->sortDir)
             ->paginate(20);
 
         return view('livewire.admin.students', ['students' => $students]);

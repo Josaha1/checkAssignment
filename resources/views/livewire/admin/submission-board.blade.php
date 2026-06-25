@@ -44,7 +44,12 @@
                 <div class="overflow-x-auto">
                     <table class="w-full">
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
-                            <tr><th class="th">รหัส</th><th class="th">ชื่อ-นามสกุล</th><th class="th">กลุ่ม</th><th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์</th></tr>
+                            <tr>
+                                <x-th-sort column="student_code" :sort-by="$sortBy" :sort-dir="$sortDir">รหัส</x-th-sort>
+                                <x-th-sort column="full_name" :sort-by="$sortBy" :sort-dir="$sortDir">ชื่อ-นามสกุล</x-th-sort>
+                                <x-th-sort column="study_group" :sort-by="$sortBy" :sort-dir="$sortDir">กลุ่ม</x-th-sort>
+                                <th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์</th>
+                            </tr>
                         </thead>
                         @foreach ($rows as $row)
                             <tbody x-data="{ open: false }" class="border-t border-slate-100 dark:border-slate-800">

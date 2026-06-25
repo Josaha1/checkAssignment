@@ -74,10 +74,10 @@
                 <table class="w-full">
                     <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <th class="th">รหัสนักศึกษา</th>
-                            <th class="th">วิชา · งาน</th>
-                            <th class="th">เวลา</th>
-                            <th class="th">สถานะ</th>
+                            <x-th-sort column="student_code" :sort-by="$sortBy" :sort-dir="$sortDir">รหัสนักศึกษา</x-th-sort>
+                            <x-th-sort column="subject" :sort-by="$sortBy" :sort-dir="$sortDir">วิชา · งาน</x-th-sort>
+                            <x-th-sort column="submitted_at" :sort-by="$sortBy" :sort-dir="$sortDir">เวลา</x-th-sort>
+                            <x-th-sort column="status" :sort-by="$sortBy" :sort-dir="$sortDir">สถานะ</x-th-sort>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
