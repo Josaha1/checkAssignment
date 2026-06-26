@@ -21,7 +21,7 @@ class Submit extends Component
     public array $uploads = []; // ไฟล์ที่เลือกใหม่ (หลายไฟล์)
 
     public const ALLOWED = 'pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png,zip';
-    public const MAX_KB = 20480; // 20MB/ไฟล์
+    public const MAX_KB = 40960; // 40MB/ไฟล์ (Livewire temp-upload + PHP ini 100M รองรับอยู่แล้ว)
     public const MAX_FILES = 10;
 
     public function mount(Assignment $assignment): void
