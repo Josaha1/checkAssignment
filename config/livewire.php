@@ -130,7 +130,8 @@ return [
 
     'temporary_file_upload' => [
         'disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK'), // Example: 'local', 's3'             | Default: 'default'
-        'rules' => null,                                      // Example: ['file', 'mimes:png,jpg'] | Default: ['required', 'file', 'max:12288'] (12MB)
+        // default Livewire = 12MB (12288) ต่ำกว่าเพดานที่หน้าส่งงานโชว์ → ไฟล์ใหญ่โดนปัดที่ temp-upload; ตั้งให้ตรง Submit::MAX_KB
+        'rules' => ['required', 'file', 'max:' . \App\Livewire\Student\Submit::MAX_KB], // 40MB
         'directory' => null,                                  // Example: 'tmp'                     | Default: 'livewire-tmp'
         'middleware' => null,                                 // Example: 'throttle:5,1'            | Default: 'throttle:60,1'
         'preview_mimes' => [                                  // Supported file types for temporary pre-signed file URLs...

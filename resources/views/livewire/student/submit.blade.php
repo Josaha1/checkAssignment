@@ -47,7 +47,7 @@
                             <label class="label">{{ $submission?->files->isNotEmpty() ? 'แนบไฟล์เพิ่ม' : 'แนบไฟล์งาน' }}</label>
                             <x-file-dropzone model="uploads" multiple accent="brand"
                                 accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.zip"
-                                hint="รองรับ pdf, word, ppt, excel, รูป, zip · ไม่เกิน 20MB/ไฟล์ · สูงสุด 10 ไฟล์" />
+                                hint="รองรับ pdf, word, ppt, excel, รูป, zip · ไม่เกิน 40MB/ไฟล์ · สูงสุด 10 ไฟล์" />
                             @error('uploads') <p class="mt-1 flex items-center gap-1.5 text-sm text-rose-600"><x-icon name="alert" class="w-4 h-4" /> {{ $message }}</p> @enderror
                             @error('uploads.*') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
                         </div>
