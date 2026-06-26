@@ -11,7 +11,9 @@ use Livewire\Component;
 class Grading extends Component
 {
     public ?int $subjectId = null;
+    public ?int $assignmentId = null;  // เลือกงาน → โหมดตารางต่อชิ้นงาน (ว่าง = matrix รวมทุกงาน)
     public ?string $group = null;
+    public string $statusFilter = '';  // กรองสถานะ: '' ทั้งหมด / missing / pending / graded
     public array $scores = []; // submissionId => score
     public string $sortBy = 'student_code';
     public string $sortDir = 'asc';
@@ -19,6 +21,8 @@ class Grading extends Component
     public function updatedSubjectId(): void
     {
         $this->scores = [];
+        $this->assignmentId = null; // เปลี่ยนวิชา → ล้างงาน/ตัวกรองที่เลือกไว้
+        $this->statusFilter = '';
     }
 
     // เรียงได้เฉพาะคอลัมน์นักศึกษา (matrix คะแนนต่องานเรียงไม่ได้)
@@ -64,6 +68,8 @@ class Grading extends Component
         $assignments = collect();
         $students = collect();
         $matrix = []; // studentId => [assignmentId => submission]
+        $rows = collect(); // โหมดต่อชิ้นงาน: [student, submission, status]
+        $selectedAssignment = null;
 
         if ($this->subjectId) {
             $subject = Subject::with('assignments')->find($this->subjectId);
@@ -74,19 +80,42 @@ class Grading extends Component
                 ->when($this->group, fn ($q) => $q->where('study_group', $this->group))
                 ->orderBy($this->sortBy, $this->sortDir)->get();
 
-            $subs = Submission::with('files')
-                ->whereNotNull('submitted_at') // ลบไฟล์ครบ → ไม่นับว่าส่ง (ไม่มีอะไรให้ตรวจ)
-                ->whereIn('assignment_id', $assignments->pluck('id'))
-                ->whereIn('student_id', $students->pluck('id'))->get();
+            if ($this->assignmentId) {
+                // โหมดต่อชิ้นงาน: 1 แถว/นักศึกษา + สถานะ + กรองสถานะได้
+                $selectedAssignment = $assignments->firstWhere('id', $this->assignmentId);
 
-            foreach ($subs as $sub) {
-                $matrix[$sub->student_id][$sub->assignment_id] = $sub;
-                if (! array_key_exists($sub->id, $this->scores)) {
-                    $this->scores[$sub->id] = $sub->score !== null ? rtrim(rtrim($sub->score, '0'), '.') : '';
+                $subs = Submission::with('files', 'histories')
+                    ->whereNotNull('submitted_at')
+                    ->where('assignment_id', $this->assignmentId)
+                    ->whereIn('student_id', $students->pluck('id'))->get()->keyBy('student_id');
+
+                $rows = $students->map(function ($st) use ($subs) {
+                    $sub = $subs[$st->id] ?? null;
+                    // ยังไม่ส่ง = ไม่มี submission, รอตรวจ = ส่งแล้วยังไม่มีคะแนน, ตรวจแล้ว = มีคะแนน
+                    $status = $sub === null ? 'missing' : ($sub->score !== null ? 'graded' : 'pending');
+                    if ($sub && ! array_key_exists($sub->id, $this->scores)) {
+                        $this->scores[$sub->id] = $sub->score !== null ? rtrim(rtrim($sub->score, '0'), '.') : '';
+                    }
+                    return ['student' => $st, 'submission' => $sub, 'status' => $status];
+                })->when($this->statusFilter, fn ($c) => $c->where('status', $this->statusFilter))->values();
+            } else {
+                // โหมด matrix เดิม (รวมทุกงาน)
+                $subs = Submission::with('files')
+                    ->whereNotNull('submitted_at') // ลบไฟล์ครบ → ไม่นับว่าส่ง (ไม่มีอะไรให้ตรวจ)
+                    ->whereIn('assignment_id', $assignments->pluck('id'))
+                    ->whereIn('student_id', $students->pluck('id'))->get();
+
+                foreach ($subs as $sub) {
+                    $matrix[$sub->student_id][$sub->assignment_id] = $sub;
+                    if (! array_key_exists($sub->id, $this->scores)) {
+                        $this->scores[$sub->id] = $sub->score !== null ? rtrim(rtrim($sub->score, '0'), '.') : '';
+                    }
                 }
             }
         }
 
-        return view('livewire.admin.grading', compact('subjects', 'groups', 'assignments', 'students', 'matrix'));
+        return view('livewire.admin.grading', compact(
+            'subjects', 'groups', 'assignments', 'students', 'matrix', 'rows', 'selectedAssignment'
+        ));
     }
 }
