@@ -39,10 +39,12 @@
 
                 @if ($submission && $submission->score !== null)
                     <div class="flex items-center gap-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-                        <x-icon name="alert" class="w-5 h-5 shrink-0" /> งานนี้ถูกตรวจแล้ว — ส่งไฟล์เพิ่มไม่ได้ (หากลบไฟล์ คะแนนจะถูกล้างและต้องส่งงานใหม่)
+                        <x-icon name="alert" class="w-5 h-5 shrink-0" /> งานนี้ถูกตรวจแล้ว — ถ้าส่งไฟล์เพิ่ม คะแนนจะถูกล้างและต้องให้อาจารย์ตรวจใหม่
                     </div>
-                @else
-                    <form wire:submit="save" class="space-y-3">
+                @endif
+
+                <form wire:submit="save" class="space-y-3"
+                    @if ($submission && $submission->score !== null) wire:confirm="ส่งไฟล์เพิ่มจะทำให้คะแนนที่ได้ ({{ $submission->score }}) หาย และต้องให้อาจารย์ตรวจใหม่ — ยืนยันส่ง?" @endif>
                         <div>
                             <label class="label">{{ $submission?->files->isNotEmpty() ? 'แนบไฟล์เพิ่ม' : 'แนบไฟล์งาน' }}</label>
                             <x-file-dropzone model="uploads" multiple accent="brand"
@@ -59,7 +61,6 @@
                             <span wire:loading wire:target="save">กำลังอัปโหลดขึ้น Drive...</span>
                         </button>
                     </form>
-                @endif
             </div>
         </div>
     </x-student-shell>

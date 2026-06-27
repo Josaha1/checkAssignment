@@ -39,10 +39,6 @@ class Submit extends Component
     {
         $student = Auth::guard('student')->user();
 
-        if ($this->submission && $this->submission->score !== null) {
-            throw ValidationException::withMessages(['uploads' => 'งานนี้ถูกตรวจให้คะแนนแล้ว แก้ไขไม่ได้']);
-        }
-
         $existing = $this->submission?->files()->count() ?? 0;
         $this->validate([
             'uploads' => [$existing > 0 ? 'nullable' : 'required', 'array', 'max:' . self::MAX_FILES],
@@ -88,6 +84,17 @@ class Submit extends Component
                 'action' => 'uploaded',
                 'actor' => $student->full_name,
                 'detail' => $file->getClientOriginalName(),
+            ]);
+        }
+
+        // ส่งไฟล์เพิ่มหลังตรวจแล้ว → ล้างคะแนนงานนั้น ต้องให้อาจารย์ตรวจใหม่
+        if (count($this->uploads) > 0 && $submission->score !== null) {
+            $submission->update(['score' => null, 'graded_at' => null]);
+            SubmissionHistory::create([
+                'submission_id' => $submission->id,
+                'action' => 'score_cleared',
+                'actor' => $student->full_name,
+                'detail' => 'ส่งไฟล์เพิ่มหลังตรวจแล้ว',
             ]);
         }
 
