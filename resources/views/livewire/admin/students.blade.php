@@ -57,7 +57,7 @@
                         <h2 class="font-semibold text-slate-800 dark:text-slate-100">นำเข้าใบลงทะเบียน (Excel)</h2>
                     </div>
                     <p class="text-xs text-slate-500">ไฟล์ .xlsx 1 ไฟล์ = 1 วิชา — ระบบอ่านชื่อวิชาจากหัวกระดาษ สร้างวิชาและลงทะเบียนนักศึกษาให้อัตโนมัติ (รหัสผ่านตั้งต้น = รหัสนักศึกษา)</p>
-                    <x-file-dropzone model="file" accent="emerald" accept=".xlsx,.xls" hint="ไฟล์ .xlsx หรือ .xls (1 ไฟล์ = 1 วิชา)" />
+                    <x-file-dropzone model="file" accent="emerald" accept=".xlsx,.xls" :files="$file ? [$file] : []" hint="ไฟล์ .xlsx หรือ .xls (1 ไฟล์ = 1 วิชา)" />
                     @error('file') <p class="text-sm text-rose-600">{{ $message }}</p> @enderror
                     <button class="btn-success w-full" wire:loading.attr="disabled" wire:target="import,file">
                         <span wire:loading.remove wire:target="import"><x-icon name="upload" class="w-4 h-4" /> นำเข้า</span>
