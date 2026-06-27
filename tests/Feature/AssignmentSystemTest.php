@@ -101,7 +101,7 @@ it('dashboard แสดงงานที่ยังไม่ส่ง', functi
         ->assertViewHas('pendingTotal', 1);
 });
 
-it('นักศึกษาแนบไฟล์ขึ้น Drive และส่งซ้ำไม่ได้ถ้าให้คะแนนแล้ว', function () {
+it('นักศึกษาแนบไฟล์ขึ้น Drive และส่งเพิ่มได้แม้ให้คะแนนแล้ว (คะแนนถูกล้าง ต้องตรวจใหม่)', function () {
     $ctx = makeStudentWithSubject();
     $fake = fakeDrive();
 
@@ -119,15 +119,43 @@ it('นักศึกษาแนบไฟล์ขึ้น Drive และส
     // โครงสร้างโฟลเดอร์ วิชา/กลุ่มเรียน/งาน/รหัสนศ.
     expect($fake->paths[0])->toContain('T-001')->toContain('043')->toContain('งานทดสอบ')->toContain('670099999');
 
-    // ให้คะแนนแล้ว → แนบเพิ่มไม่ได้
+    // ให้คะแนนแล้ว → ส่งไฟล์เพิ่มได้ แต่คะแนนถูกล้าง ต้องตรวจใหม่
     $sub->update(['score' => 8, 'graded_at' => now()]);
     Livewire::actingAs($ctx['student'], 'student')
         ->test(Submit::class, ['assignment' => $ctx['assignment']])
         ->set('uploads', [UploadedFile::fake()->create('c.pdf', 50, 'application/pdf')])
         ->call('save')
-        ->assertHasErrors('uploads');
+        ->assertHasNoErrors();
 
-    expect(Submission::first()->files()->count())->toBe(2);
+    $sub->refresh();
+    expect($sub->files()->count())->toBe(3);            // ไฟล์เดิม 2 + เพิ่ม 1
+    expect($sub->score)->toBeNull();                    // คะแนนถูกล้าง
+    expect($sub->graded_at)->toBeNull();
+    expect(SubmissionHistory::where('submission_id', $sub->id)->where('action', 'score_cleared')->exists())->toBeTrue();
+});
+
+it('ส่งงานในงานที่ตรวจแล้วโดยไม่แนบไฟล์ใหม่ → คะแนนไม่ถูกล้าง', function () {
+    $ctx = makeStudentWithSubject();
+    fakeDrive();
+
+    $sub = Submission::create([
+        'assignment_id' => $ctx['assignment']->id,
+        'student_id' => $ctx['student']->id,
+        'score' => 8, 'submitted_at' => now(), 'graded_at' => now(),
+    ]);
+    SubmissionFile::create([
+        'submission_id' => $sub->id, 'drive_file_id' => 'x', 'name' => 'old.pdf',
+        'url' => 'http://x', 'mime' => 'application/pdf', 'size' => 100,
+    ]);
+
+    Livewire::actingAs($ctx['student'], 'student')
+        ->test(Submit::class, ['assignment' => $ctx['assignment']])
+        ->call('save') // ไม่ set uploads → ไม่มีไฟล์ใหม่
+        ->assertHasNoErrors();
+
+    $sub->refresh();
+    expect($sub->score)->not->toBeNull();               // คะแนนยังอยู่
+    expect(SubmissionHistory::where('submission_id', $sub->id)->where('action', 'score_cleared')->exists())->toBeFalse();
 });
 
 it('แนบไฟล์ชนิดไม่อนุญาตถูกปฏิเสธ', function () {
