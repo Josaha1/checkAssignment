@@ -5,6 +5,7 @@
     'accent' => 'brand',     // brand (นักศึกษา) | emerald (แอดมิน)
     'hint' => '',
     'title' => 'คลิกเพื่อเลือกไฟล์ หรือ ลากไฟล์มาวาง',
+    'files' => [],           // ไฟล์ที่อัปโหลดแล้วจาก server ($uploads / [$file]) — TemporaryUploadedFile[]
 ])
 @php
     $tones = [
@@ -13,41 +14,11 @@
     ];
     $tone = $tones[$accent] ?? $tones['brand'];
 @endphp
-<div x-data="{
-        over: false,
-        names: [],
-        multiple: @js($multiple),
-        init() {
-            // truth = DataTransfer ผูกกับ DOM node — รอด Livewire morph + กรณี Livewire เคลียร์ input หลัง upload (กัน FileList ถูกแทนทั้งก้อน)
-            if (! this.$root._dt) this.$root._dt = new DataTransfer();
-        },
-        merge(incoming) {
-            if (! this.$root._dt) this.$root._dt = new DataTransfer();
-            const dt = this.multiple ? this.$root._dt : new DataTransfer(); // เลือกหลายไฟล์ = สะสม / ไฟล์เดียว = แทนที่
-            const seen = new Set(Array.from(dt.files).map(f => f.name + ':' + f.size));
-            incoming.forEach(f => {
-                const key = f.name + ':' + f.size;
-                if (! seen.has(key)) { dt.items.add(f); seen.add(key); } // กันไฟล์ซ้ำ
-            });
-            this.$root._dt = dt;
-            this.flush();
-        },
-        removeAt(i) {
-            const ndt = new DataTransfer();
-            Array.from(this.$root._dt.files).forEach((f, idx) => { if (idx !== i) ndt.items.add(f); });
-            this.$root._dt = ndt;
-            this.flush();
-        },
-        flush() {
-            this.$refs.sink.files = this.$root._dt.files;                          // ป้อนชุดสะสมเข้า input ที่มี wire:model
-            this.names = Array.from(this.$root._dt.files).map(f => f.name);
-            this.$refs.sink.dispatchEvent(new Event('change', { bubbles: true })); // ให้ Livewire อัปโหลดชุดล่าสุด
-        }
-     }"
+<div x-data="{ over: false }"
      x-on:dragover.prevent="over = true"
      x-on:dragleave.prevent="over = false"
-     x-on:drop.prevent="over = false; merge(Array.from($event.dataTransfer.files))">
-    {{-- คลิก label เปิด file picker; drag ลงโซนก็ได้ --}}
+     x-on:drop.prevent="over = false; $refs.input.files = $event.dataTransfer.files; $refs.input.dispatchEvent(new Event('change', { bubbles: true }))">
+    {{-- คลิก label เปิด file picker; drag ลงโซนก็ได้ — Livewire append ไฟล์ที่เลือกแต่ละครั้งเข้า $uploads (เลือกทีละไฟล์ก็สะสมครบ) --}}
     <label :class="over ? '{{ $tone['drag'] }}' : 'border-slate-300 dark:border-slate-600 bg-slate-50/60 dark:bg-slate-800/30 {{ $tone['hover'] }}'"
            class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center cursor-pointer transition">
         <span class="grid place-items-center w-12 h-12 rounded-full {{ $tone['icon'] }}">
@@ -57,27 +28,24 @@
         @if ($hint)
             <p class="text-xs text-slate-400">{{ $hint }}</p>
         @endif
-        {{-- picker: ไม่มี wire:model — อ่านไฟล์ที่เลือกแล้วส่งให้ merge() เท่านั้น --}}
-        <input x-ref="picker" type="file"
+        <input x-ref="input" type="file" wire:model="{{ $model }}"
                @if ($multiple) multiple @endif @if ($accept) accept="{{ $accept }}" @endif
-               x-on:change="merge(Array.from($refs.picker.files)); $refs.picker.value = ''"
                class="sr-only">
     </label>
 
-    {{-- sink: input ที่ผูก wire:model จริง — รับเฉพาะชุดสะสมที่ merge()/removeAt() dispatch (กัน race กับ native pick) --}}
-    <input x-ref="sink" type="file" wire:model="{{ $model }}" @if ($multiple) multiple @endif class="hidden">
-
-    {{-- ไฟล์ที่เลือก — โชว์ทุกไฟล์ที่สะสม + ลบรายตัวได้ --}}
-    <template x-if="names.length">
+    {{-- ไฟล์ที่อัปโหลดแล้ว — render จาก $uploads ฝั่ง server (โชว์ครบทุกไฟล์ที่จะส่งจริง) + ลบรายตัว --}}
+    @if (count($files))
         <ul class="mt-3 space-y-2">
-            <template x-for="(n, i) in names" :key="n + ':' + i">
-                <li class="flex items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-3 py-2">
+            @foreach ($files as $f)
+                <li wire:key="up-{{ $f->getFilename() }}" class="flex items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/40 px-3 py-2">
                     <x-icon name="check" class="w-4 h-4 text-emerald-500 shrink-0" />
-                    <span class="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate" x-text="n"></span>
-                    <button type="button" @click="removeAt(i)" :aria-label="'ลบ ' + n"
+                    <span class="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate">{{ $f->getClientOriginalName() }}</span>
+                    {{-- ลบราย temp file ด้วย $removeUpload (built-in) — ลบจาก $uploads ฝั่ง server จริง กันไฟล์ที่ลบหลุดไปตอนส่ง --}}
+                    <button type="button" x-on:click="$wire.$removeUpload('{{ $model }}', '{{ $f->getFilename() }}')"
+                            aria-label="ลบ {{ $f->getClientOriginalName() }}"
                             class="text-slate-400 hover:text-rose-500 transition shrink-0"><x-icon name="x" class="w-4 h-4" /></button>
                 </li>
-            </template>
+            @endforeach
         </ul>
-    </template>
+    @endif
 </div>
