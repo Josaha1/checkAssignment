@@ -43,8 +43,7 @@
                     </div>
                 @endif
 
-                <form wire:submit="save" class="space-y-3"
-                    @if ($submission && $submission->score !== null) wire:confirm="ส่งไฟล์เพิ่มจะทำให้คะแนนที่ได้ ({{ $submission->score }}) หาย และต้องให้อาจารย์ตรวจใหม่ — ยืนยันส่ง?" @endif>
+                <form wire:submit="save" class="space-y-3">
                         <div>
                             <label class="label">{{ $submission?->files->isNotEmpty() ? 'แนบไฟล์เพิ่ม' : 'แนบไฟล์งาน' }}</label>
                             <x-file-dropzone model="uploads" multiple accent="brand"
@@ -56,7 +55,10 @@
 
                         <div wire:loading wire:target="uploads" class="text-sm text-slate-400">กำลังเตรียมไฟล์...</div>
 
-                        <button type="submit" class="btn-primary w-full" wire:loading.attr="disabled" wire:target="save,uploads">
+                        {{-- งานที่ตรวจแล้ว: ยืนยันต้องผูกกับ wire:click ไม่ใช่ form-submit — wire:confirm บน <form wire:submit> ไม่ fire บน Livewire build ที่ prod รัน (เด้งเฉพาะ wire:click) --}}
+                        <button type="{{ $submission && $submission->score !== null ? 'button' : 'submit' }}"
+                            @if ($submission && $submission->score !== null) wire:click="save" wire:confirm="ส่งไฟล์เพิ่มจะทำให้คะแนนที่ได้ ({{ $submission->score }}) หาย และต้องให้อาจารย์ตรวจใหม่ — ยืนยันส่ง?" @endif
+                            class="btn-primary w-full" wire:loading.attr="disabled" wire:target="save,uploads">
                             <span wire:loading.remove wire:target="save"><x-icon name="upload" class="w-4 h-4" /> ส่งงาน</span>
                             <span wire:loading wire:target="save">กำลังอัปโหลดขึ้น Drive...</span>
                         </button>
