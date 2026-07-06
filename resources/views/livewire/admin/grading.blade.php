@@ -51,7 +51,7 @@
                         <thead class="bg-slate-50 dark:bg-slate-800/50">
                             <tr>
                                 <x-th-sort column="student_code" :sort-by="$sortBy" :sort-dir="$sortDir">นักศึกษา</x-th-sort>
-                                <th class="th">ไฟล์</th>
+                                <th class="th">ไฟล์/ลิงก์</th>
                                 <th class="th">เวลาส่ง</th>
                                 <th class="th">สถานะ</th>
                                 <th class="th text-center whitespace-nowrap">คะแนน @if ($selectedAssignment)<span class="font-normal text-slate-400">(เต็ม {{ rtrim(rtrim($selectedAssignment->max_score, '0'), '.') }})</span>@endif</th>
@@ -68,7 +68,7 @@
                                         @if ($row['submission'] && $row['submission']->files->isNotEmpty())
                                             <div class="flex flex-col gap-0.5">
                                                 @foreach ($row['submission']->files as $f)
-                                                    <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[200px] truncate"><x-icon name="external" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
+                                                    <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[200px] truncate"><x-icon :name="$f->type === 'link' ? 'link' : 'external'" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
                                                 @endforeach
                                             </div>
                                         @else <span class="text-slate-400">—</span> @endif
@@ -143,10 +143,10 @@
                                                 <div class="flex flex-col items-center gap-1.5">
                                                     @forelse ($sub->files as $f)
                                                         <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline max-w-[120px] truncate">
-                                                            <x-icon name="external" class="w-3 h-3 shrink-0" /> <span class="truncate">{{ $f->name }}</span>
+                                                            <x-icon :name="$f->type === 'link' ? 'link' : 'external'" class="w-3 h-3 shrink-0" /> <span class="truncate">{{ $f->name }}</span>
                                                         </a>
                                                     @empty
-                                                        <span class="text-[10px] text-slate-400">ไม่มีไฟล์</span>
+                                                        <span class="text-[10px] text-slate-400">ไม่มีไฟล์/ลิงก์</span>
                                                     @endforelse
                                                     <input type="number" step="0.01" min="0" max="{{ $a->max_score }}"
                                                            wire:model="scores.{{ $sub->id }}"

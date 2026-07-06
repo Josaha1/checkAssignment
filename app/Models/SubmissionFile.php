@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SubmissionFile extends Model
 {
-    protected $fillable = ['submission_id', 'drive_file_id', 'name', 'url', 'mime', 'size'];
+    protected $fillable = ['submission_id', 'type', 'drive_file_id', 'name', 'url', 'mime', 'size'];
 
     public function submission(): BelongsTo
     {

@@ -5,9 +5,11 @@
     // label graded ต่างกันตามผู้ดู: แอดมินเห็น "ให้คะแนน" + เลข, นักศึกษาเห็นแค่ "ตรวจให้คะแนนแล้ว" (ห้ามโชว์คะแนน)
     $map = [
         'uploaded'      => ['label' => 'อัปโหลดไฟล์',        'icon' => 'upload',       'tone' => 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'],
+        'link_added'    => ['label' => 'เพิ่มลิงก์',          'icon' => 'link',         'tone' => 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'],
         'graded'        => ['label' => $showScore ? 'ให้คะแนน' : 'ตรวจให้คะแนนแล้ว', 'icon' => 'circle-check', 'tone' => 'bg-sky-100 text-sky-600 dark:bg-sky-500/15 dark:text-sky-400'],
         'score_cleared' => ['label' => 'คะแนนถูกล้าง',       'icon' => 'alert',        'tone' => 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400'],
         'file_deleted'  => ['label' => 'ลบไฟล์',             'icon' => 'trash',        'tone' => 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400'],
+        'link_deleted'  => ['label' => 'ลบลิงก์',            'icon' => 'link',         'tone' => 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400'],
     ];
 @endphp
 <ol class="relative ml-2 border-l border-slate-200 dark:border-slate-700 space-y-3 py-1">
