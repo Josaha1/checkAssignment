@@ -727,3 +727,16 @@ it('หน้าส่งงานมีช่องใส่ลิงก์ + �
         ->assertSeeHtml('https://a.com')                            // ลิงก์ที่ส่งแล้วแสดง
         ->assertSeeHtml('wire:click="removeFile(' . $link->id . ')"'); // ลบลิงก์ได้
 });
+
+it('หน้าส่งงาน: งานที่ตรวจแล้ว ต้องไม่โชว์เลขคะแนนใน popup ยืนยันส่งซ้ำ (กันคะแนนรั่วถึงนักศึกษา)', function () {
+    fakeDrive();
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now(), 'score' => 7.25, 'graded_at' => now()]);
+    SubmissionFile::create(['submission_id' => $sub->id, 'type' => 'file', 'drive_file_id' => 'f', 'name' => 'a.pdf', 'url' => 'http://a']);
+
+    Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment])
+        ->assertOk()
+        ->assertSee('ยืนยันส่ง')        // popup ยืนยันยังต้องอยู่ (ไม่ได้ถอด safety ทิ้ง)
+        ->assertDontSee('7.25')         // ❗ เลขคะแนนต้องไม่โผล่ที่ใดในหน้า (รวมใน wire:confirm)
+        ->assertDontSee('7.25', true, false); // ❗ รวม Livewire snapshot ใน DOM (inspect เห็นได้)
+});
