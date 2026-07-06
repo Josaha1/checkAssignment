@@ -18,18 +18,18 @@
                     <div class="rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 p-4 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{{ $assignment->description }}</div>
                 @endif
 
-                {{-- ไฟล์ที่ส่งแล้ว --}}
+                {{-- ไฟล์/ลิงก์ที่ส่งแล้ว --}}
                 @if ($submission && $submission->files->isNotEmpty())
                     <div>
-                        <p class="label">ไฟล์ที่ส่งแล้ว ({{ $submission->files->count() }})</p>
+                        <p class="label">ไฟล์/ลิงก์ที่ส่งแล้ว ({{ $submission->files->count() }})</p>
                         <div class="space-y-2">
                             @foreach ($submission->files as $f)
                                 <div class="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2">
-                                    <x-icon name="clipboard" class="w-4 h-4 text-slate-400 shrink-0" />
+                                    <x-icon :name="$f->type === 'link' ? 'link' : 'clipboard'" class="w-4 h-4 text-slate-400 shrink-0" />
                                     <a href="{{ $f->url }}" target="_blank" rel="noopener" class="flex-1 text-sm text-slate-700 dark:text-slate-200 truncate hover:text-brand-600">{{ $f->name }}</a>
                                     {{-- ลบได้เสมอ — ถ้าตรวจแล้ว เตือนว่าคะแนนจะหาย --}}
                                     <button wire:click="removeFile({{ $f->id }})"
-                                            wire:confirm="{{ $submission->score !== null ? 'ลบไฟล์นี้จะทำให้คะแนนที่ได้หายไป และต้องส่งงานใหม่ — ยืนยันลบ?' : 'ลบไฟล์นี้?' }}"
+                                            wire:confirm="{{ $submission->score !== null ? 'ลบ' . ($f->type === 'link' ? 'ลิงก์' : 'ไฟล์') . 'นี้จะทำให้คะแนนที่ได้หายไป และต้องส่งงานใหม่ — ยืนยันลบ?' : ('ลบ' . ($f->type === 'link' ? 'ลิงก์' : 'ไฟล์') . 'นี้?') }}"
                                             class="text-rose-500 hover:text-rose-600 shrink-0"><x-icon name="trash" class="w-4 h-4" /></button>
                                 </div>
                             @endforeach
@@ -51,6 +51,15 @@
                                 hint="รองรับ pdf, word, ppt, excel, รูป, zip · ไม่เกิน 40MB/ไฟล์ · สูงสุด 10 ไฟล์" />
                             @error('uploads') <p class="mt-1 flex items-center gap-1.5 text-sm text-rose-600"><x-icon name="alert" class="w-4 h-4" /> {{ $message }}</p> @enderror
                             @error('uploads.*') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        {{-- ส่งเป็นลิงก์ได้ด้วย (Google Drive, YouTube ฯลฯ) — 1 บรรทัด 1 ลิงก์ --}}
+                        <div>
+                            <label class="label flex items-center gap-1.5"><x-icon name="link" class="w-4 h-4 text-slate-400" /> ลิงก์งาน (ถ้ามี)</label>
+                            <textarea wire:model="links" rows="2" class="input resize-y"
+                                placeholder="วางลิงก์ที่นี่ — 1 ลิงก์ต่อบรรทัด"></textarea>
+                            <p class="mt-1 text-xs text-slate-400">ใส่ได้หลายลิงก์ บรรทัดละ 1 ลิงก์ · ต้องขึ้นต้น http:// หรือ https://</p>
+                            @error('links') <p class="mt-1 flex items-center gap-1.5 text-sm text-rose-600"><x-icon name="alert" class="w-4 h-4" /> {{ $message }}</p> @enderror
                         </div>
 
                         <div wire:loading wire:target="uploads" class="text-sm text-slate-400">กำลังเตรียมไฟล์...</div>

@@ -565,3 +565,165 @@ it('หลังลบไฟล์ครบ ทุกหน้าขึ้น "�
 it('guest เข้า /admin ถูก redirect ไป admin.login', function () {
     $this->get('/admin')->assertRedirect(route('admin.login'));
 });
+
+// ── ส่งงานเป็นลิงก์ (link submission) ──────────────────────────────────────────
+
+it('นักศึกษาส่งงานเป็นลิงก์อย่างเดียวได้ (ไม่แนบไฟล์) → นับว่าส่งแล้ว + row type=link', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->set('links', 'https://drive.google.com/file/d/abc/view')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $sub = Submission::with('files')->first();
+    expect($sub)->not->toBeNull();
+    expect($sub->submitted_at)->not->toBeNull();          // ลิงก์ล้วนก็ถือว่าส่งแล้ว
+    expect($sub->files)->toHaveCount(1);
+    $row = $sub->files->first();
+    expect($row->type)->toBe('link');
+    expect($row->url)->toBe('https://drive.google.com/file/d/abc/view');
+    expect($row->drive_file_id)->toBeNull();              // ลิงก์ไม่มีไฟล์บน Drive
+    expect($sub->histories()->where('action', 'link_added')->exists())->toBeTrue();
+});
+
+it('ส่งได้ทั้งไฟล์และลิงก์พร้อมกัน', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->set('uploads', [UploadedFile::fake()->create('a.pdf', 50, 'application/pdf')])
+        ->set('links', 'https://youtu.be/xyz')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $sub = Submission::with('files')->first();
+    expect($sub->files->where('type', 'file'))->toHaveCount(1);
+    expect($sub->files->where('type', 'link'))->toHaveCount(1);
+});
+
+it('ใส่หลายลิงก์ (หลายบรรทัด) → สร้างหลาย row', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->set('links', "https://a.com/1\nhttps://b.com/2\n\nhttps://c.com/3")  // บรรทัดว่างถูกข้าม
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Submission::first()->files()->where('type', 'link')->count())->toBe(3);
+});
+
+it('ลิงก์ที่ไม่ใช่ http/https ถูกปฏิเสธ (กัน javascript: และ url เพี้ยน)', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->set('links', "javascript:alert(1)\nnotaurl\nftp://x.com")
+        ->call('save')
+        ->assertHasErrors('links');
+
+    expect(Submission::count())->toBe(0);   // ไม่บันทึกอะไร
+});
+
+it('ไม่แนบไฟล์และไม่ใส่ลิงก์ → required error (ต้องมีอย่างน้อย 1 อย่าง)', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->call('save')
+        ->assertHasErrors('uploads');
+});
+
+it('ลบลิงก์ → ไม่เรียก Drive delete (ไม่ crash) + บันทึก history link_deleted', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+    $link = SubmissionFile::create([
+        'submission_id' => $sub->id, 'type' => 'link', 'drive_file_id' => null,
+        'name' => 'https://a.com', 'url' => 'https://a.com',
+    ]);
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->call('removeFile', $link->id)
+        ->assertHasNoErrors();
+
+    expect(SubmissionFile::find($link->id))->toBeNull();
+    expect($sub->histories()->where('action', 'link_deleted')->exists())->toBeTrue();
+});
+
+it('เหลือลิงก์อยู่ → ยังเป็นส่งแล้ว; ลบลิงก์ตัวสุดท้ายด้วย → ยังไม่ส่ง (submitted_at=null)', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+    $file = SubmissionFile::create(['submission_id' => $sub->id, 'type' => 'file', 'drive_file_id' => 'fid', 'name' => 'a.pdf', 'url' => 'http://a']);
+    $link = SubmissionFile::create(['submission_id' => $sub->id, 'type' => 'link', 'drive_file_id' => null, 'name' => 'https://a.com', 'url' => 'https://a.com']);
+
+    $c = Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment]);
+
+    $c->call('removeFile', $file->id);          // ลบไฟล์ เหลือลิงก์
+    $sub->refresh();
+    expect($sub->submitted_at)->not->toBeNull(); // ยังส่งอยู่เพราะยังมีลิงก์
+
+    $c->call('removeFile', $link->id);          // ลบลิงก์ตัวสุดท้าย
+    $sub->refresh();
+    expect($sub->submitted_at)->toBeNull();      // ไม่เหลืออะไร → ยังไม่ส่ง
+});
+
+it('เพิ่มลิงก์หลังตรวจแล้ว → คะแนนถูกล้าง ต้องตรวจใหม่', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now(), 'score' => 8, 'graded_at' => now()]);
+    SubmissionFile::create(['submission_id' => $sub->id, 'type' => 'file', 'drive_file_id' => 'f', 'name' => 'a.pdf', 'url' => 'http://a']);
+
+    Livewire::actingAs($student, 'student')
+        ->test(Submit::class, ['assignment' => $assignment])
+        ->set('links', 'https://newlink.com')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $sub->refresh();
+    expect($sub->score)->toBeNull();
+    expect($sub->graded_at)->toBeNull();
+    expect($sub->histories()->where('action', 'score_cleared')->exists())->toBeTrue();
+});
+
+it('อาจารย์เห็นลิงก์ที่นักศึกษาส่งในหน้า grading + submission board', function () {
+    $admin = User::factory()->create();
+    ['student' => $student, 'assignment' => $assignment, 'subject' => $subject] = makeStudentWithSubject();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+    SubmissionFile::create(['submission_id' => $sub->id, 'type' => 'link', 'drive_file_id' => null, 'name' => 'https://work.link/a', 'url' => 'https://work.link/a']);
+
+    Livewire::actingAs($admin)->test(Grading::class)
+        ->set('subjectId', $subject->id)
+        ->set('assignmentId', $assignment->id)
+        ->assertOk()
+        ->assertSeeHtml('https://work.link/a');
+
+    Livewire::actingAs($admin)->test(\App\Livewire\Admin\SubmissionBoard::class)
+        ->set('subjectId', $subject->id)
+        ->set('assignmentId', $assignment->id)
+        ->assertOk()
+        ->assertSeeHtml('https://work.link/a');
+});
+
+it('หน้าส่งงานมีช่องใส่ลิงก์ + แสดงลิงก์ที่ส่งแล้วให้ลบได้', function () {
+    ['student' => $student, 'assignment' => $assignment] = makeStudentWithSubject();
+    fakeDrive();
+    $sub = Submission::create(['assignment_id' => $assignment->id, 'student_id' => $student->id, 'submitted_at' => now()]);
+    $link = SubmissionFile::create(['submission_id' => $sub->id, 'type' => 'link', 'drive_file_id' => null, 'name' => 'https://a.com', 'url' => 'https://a.com']);
+
+    Livewire::actingAs($student, 'student')->test(Submit::class, ['assignment' => $assignment])
+        ->assertOk()
+        ->assertSeeHtml('wire:model="links"')                       // ช่องใส่ลิงก์
+        ->assertSee('ลิงก์งาน')
+        ->assertSeeHtml('https://a.com')                            // ลิงก์ที่ส่งแล้วแสดง
+        ->assertSeeHtml('wire:click="removeFile(' . $link->id . ')"'); // ลบลิงก์ได้
+});

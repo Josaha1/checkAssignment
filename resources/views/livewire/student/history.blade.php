@@ -13,7 +13,7 @@
                         <tr>
                             <x-th-sort column="subject" :sort-by="$sortBy" :sort-dir="$sortDir">วิชา · งาน</x-th-sort>
                             <x-th-sort column="submitted_at" :sort-by="$sortBy" :sort-dir="$sortDir">ส่งเมื่อ</x-th-sort>
-                            <th class="th">ไฟล์</th>
+                            <th class="th">ไฟล์/ลิงก์</th>
                             <x-th-sort column="status" :sort-by="$sortBy" :sort-dir="$sortDir">สถานะ</x-th-sort>
                         </tr>
                     </thead>
@@ -29,7 +29,7 @@
                                     @if ($s->files->isNotEmpty())
                                         <div class="flex flex-col gap-0.5">
                                             @foreach ($s->files as $f)
-                                                <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[220px] truncate"><x-icon name="external" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
+                                                <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[220px] truncate"><x-icon :name="$f->type === 'link' ? 'link' : 'external'" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
                                             @endforeach
                                         </div>
                                     @else <span class="text-slate-400">—</span> @endif

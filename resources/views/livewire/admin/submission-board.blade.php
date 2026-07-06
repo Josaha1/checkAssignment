@@ -48,7 +48,7 @@
                                 <x-th-sort column="student_code" :sort-by="$sortBy" :sort-dir="$sortDir">รหัส</x-th-sort>
                                 <x-th-sort column="full_name" :sort-by="$sortBy" :sort-dir="$sortDir">ชื่อ-นามสกุล</x-th-sort>
                                 <x-th-sort column="study_group" :sort-by="$sortBy" :sort-dir="$sortDir">กลุ่ม</x-th-sort>
-                                <th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์</th>
+                                <th class="th">สถานะ</th><th class="th">เวลาส่ง</th><th class="th">ไฟล์/ลิงก์</th>
                             </tr>
                         </thead>
                         @foreach ($rows as $row)
@@ -69,7 +69,7 @@
                                         @if ($row['submission'] && $row['submission']->files->isNotEmpty())
                                             <div class="flex flex-col gap-0.5">
                                                 @foreach ($row['submission']->files as $f)
-                                                    <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[200px] truncate"><x-icon name="external" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
+                                                    <a href="{{ $f->url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline max-w-[200px] truncate"><x-icon :name="$f->type === 'link' ? 'link' : 'external'" class="w-4 h-4 shrink-0" /> <span class="truncate">{{ $f->name }}</span></a>
                                                 @endforeach
                                             </div>
                                         @else — @endif
