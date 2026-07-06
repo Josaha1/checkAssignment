@@ -66,7 +66,8 @@
 
                         {{-- งานที่ตรวจแล้ว: ยืนยันต้องผูกกับ wire:click ไม่ใช่ form-submit — wire:confirm บน <form wire:submit> ไม่ fire บน Livewire build ที่ prod รัน (เด้งเฉพาะ wire:click) --}}
                         <button type="{{ $submission && $submission->score !== null ? 'button' : 'submit' }}"
-                            @if ($submission && $submission->score !== null) wire:click="save" wire:confirm="ส่งไฟล์เพิ่มจะทำให้คะแนนที่ได้ ({{ $submission->score }}) หาย และต้องให้อาจารย์ตรวจใหม่ — ยืนยันส่ง?" @endif
+                            {{-- ห้ามแทรกเลขคะแนนในข้อความ — นักศึกษาต้องไม่เห็นคะแนนตัวเอง --}}
+                            @if ($submission && $submission->score !== null) wire:click="save" wire:confirm="ส่งไฟล์เพิ่มจะทำให้คะแนนที่ได้หาย และต้องให้อาจารย์ตรวจใหม่ — ยืนยันส่ง?" @endif
                             class="btn-primary w-full" wire:loading.attr="disabled" wire:target="save,uploads">
                             <span wire:loading.remove wire:target="save"><x-icon name="upload" class="w-4 h-4" /> ส่งงาน</span>
                             <span wire:loading wire:target="save">กำลังอัปโหลดขึ้น Drive...</span>
