@@ -58,7 +58,8 @@
                             </tr>
                         </thead>
                         @forelse ($rows as $row)
-                            <tbody x-data="{ open: false }" class="border-t border-slate-100 dark:border-slate-800">
+                            {{-- wire:key ต่อนักศึกษา: ยึด identity แถวไว้ กัน morphdom สลับค่า input คะแนน/Alpine state ข้ามคนตอน re-render --}}
+                            <tbody wire:key="grow-{{ $row['student']->id }}" x-data="{ open: false }" class="border-t border-slate-100 dark:border-slate-800">
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                     <td class="td">
                                         <p class="font-medium text-slate-900 dark:text-white">{{ $row['student']->student_code }}</p>
@@ -131,14 +132,14 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @forelse ($students as $st)
-                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                <tr wire:key="mrow-{{ $st->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                                     <td class="td sticky left-0 bg-white dark:bg-slate-900 z-10">
                                         <p class="font-medium text-slate-900 dark:text-white">{{ $st->student_code }}</p>
                                         <p class="text-xs text-slate-400">{{ $st->full_name }} · {{ $st->study_group }}</p>
                                     </td>
                                     @foreach ($assignments as $a)
                                         @php $sub = $matrix[$st->id][$a->id] ?? null; @endphp
-                                        <td class="px-3 py-3 text-center align-top">
+                                        <td wire:key="mcell-{{ $st->id }}-{{ $a->id }}" class="px-3 py-3 text-center align-top">
                                             @if ($sub)
                                                 <div class="flex flex-col items-center gap-1.5">
                                                     @forelse ($sub->files as $f)
