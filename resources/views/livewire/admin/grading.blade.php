@@ -36,6 +36,15 @@
                 </div>
             @endif
             @if ($subjectId)
+                <div>
+                    <label class="label">ค้นหานักศึกษา</label>
+                    <div class="relative">
+                        <x-icon name="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input type="text" wire:model.live.debounce.300ms="search" placeholder="รหัส / ชื่อ" class="input pl-9 !w-auto min-w-[180px]">
+                    </div>
+                </div>
+            @endif
+            @if ($subjectId)
                 <div class="ml-auto flex gap-2">
                     <button wire:click="saveScores" class="btn-primary"><x-icon name="check" class="w-4 h-4" /> บันทึกคะแนน</button>
                     <a href="{{ route('admin.export', ['subject' => $subjectId, 'group' => $group]) }}" class="btn-success"><x-icon name="download" class="w-4 h-4" /> Export CSV</a>
@@ -114,6 +123,7 @@
                         @endforelse
                     </table>
                 </div>
+                <div class="p-4">{{ $students->links() }}</div>
             </div>
         @elseif ($subjectId)
             <div class="card mt-6 overflow-hidden">
@@ -165,6 +175,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div class="p-4">{{ $students->links() }}</div>
             </div>
         @else
             <div class="card card-pad text-center text-slate-400 py-16 mt-6">
