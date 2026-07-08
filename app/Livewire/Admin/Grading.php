@@ -18,14 +18,15 @@ class Grading extends Component
     public ?string $group = null;
     public string $statusFilter = '';  // กรองสถานะ: '' ทั้งหมด / missing / pending / graded
     public string $search = '';        // ค้นหารหัส/ชื่อนักศึกษา
+    public int $perPage = 20;          // จำนวน record/หน้า (whitelist 10/20/50/100)
     public array $scores = []; // submissionId => score
     public string $sortBy = 'student_code';
     public string $sortDir = 'asc';
 
-    // เปลี่ยนตัวกรอง/ค้นหา → กลับหน้า 1 กัน currentPage เกินช่วง (เว้น scores.* ที่พิมพ์คะแนน)
+    // เปลี่ยนตัวกรอง/ค้นหา/จำนวนต่อหน้า → กลับหน้า 1 กัน currentPage เกินช่วง (เว้น scores.* ที่พิมพ์คะแนน)
     public function updated(string $name): void
     {
-        if (in_array($name, ['subjectId', 'group', 'assignmentId', 'statusFilter', 'search'], true)) {
+        if (in_array($name, ['subjectId', 'group', 'assignmentId', 'statusFilter', 'search', 'perPage'], true)) {
             $this->resetPage();
         }
     }
@@ -88,6 +89,9 @@ class Grading extends Component
             $subject = Subject::with('assignments')->find($this->subjectId);
             $assignments = $subject?->assignments->sortBy('id')->values() ?? collect();
 
+            // clamp กัน inject perPage ใหญ่ผิดปกติ (ดึงทั้งตาราง)
+            $per = in_array($this->perPage, [10, 20, 50, 100], true) ? $this->perPage : 20;
+
             $students = Student::query()
                 ->whereHas('subjects', fn ($q) => $q->whereKey($this->subjectId))
                 ->when($this->group, fn ($q) => $q->where('study_group', $this->group))
@@ -95,7 +99,14 @@ class Grading extends Component
                 ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
                     ->where('student_code', 'like', "%{$this->search}%")
                     ->orWhere('full_name', 'like', "%{$this->search}%")))
-                ->orderBy($this->sortBy, $this->sortDir)->paginate(20);
+                // กรองสถานะที่ DB (ไม่ใช่ใน memory หลัง paginate) → แต่ละหน้าจำนวนเท่ากัน
+                ->when($this->assignmentId && $this->statusFilter, fn ($q) => match ($this->statusFilter) {
+                    'missing' => $q->whereDoesntHave('submissions', fn ($s) => $s->where('assignment_id', $this->assignmentId)->whereNotNull('submitted_at')),
+                    'pending' => $q->whereHas('submissions', fn ($s) => $s->where('assignment_id', $this->assignmentId)->whereNotNull('submitted_at')->whereNull('score')),
+                    'graded' => $q->whereHas('submissions', fn ($s) => $s->where('assignment_id', $this->assignmentId)->whereNotNull('submitted_at')->whereNotNull('score')),
+                    default => $q,
+                })
+                ->orderBy($this->sortBy, $this->sortDir)->paginate($per);
 
             if ($this->assignmentId) {
                 // โหมดต่อชิ้นงาน: 1 แถว/นักศึกษา + สถานะ + กรองสถานะได้
@@ -114,7 +125,7 @@ class Grading extends Component
                         $this->scores[$sub->id] = $sub->score !== null ? rtrim(rtrim($sub->score, '0'), '.') : '';
                     }
                     return ['student' => $st, 'submission' => $sub, 'status' => $status];
-                })->when($this->statusFilter, fn ($c) => $c->where('status', $this->statusFilter))->values();
+                })->values(); // กรองสถานะย้ายไปที่ DB แล้ว (paginate นับถูก) — ไม่ต้องกรองซ้ำใน memory
             } else {
                 // โหมด matrix เดิม (รวมทุกงาน)
                 $subs = Submission::with('files')
