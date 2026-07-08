@@ -7,16 +7,28 @@ use App\Models\Subject;
 use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Grading extends Component
 {
+    use WithPagination;
+
     public ?int $subjectId = null;
     public ?int $assignmentId = null;  // เลือกงาน → โหมดตารางต่อชิ้นงาน (ว่าง = matrix รวมทุกงาน)
     public ?string $group = null;
     public string $statusFilter = '';  // กรองสถานะ: '' ทั้งหมด / missing / pending / graded
+    public string $search = '';        // ค้นหารหัส/ชื่อนักศึกษา
     public array $scores = []; // submissionId => score
     public string $sortBy = 'student_code';
     public string $sortDir = 'asc';
+
+    // เปลี่ยนตัวกรอง/ค้นหา → กลับหน้า 1 กัน currentPage เกินช่วง (เว้น scores.* ที่พิมพ์คะแนน)
+    public function updated(string $name): void
+    {
+        if (in_array($name, ['subjectId', 'group', 'assignmentId', 'statusFilter', 'search'], true)) {
+            $this->resetPage();
+        }
+    }
 
     public function updatedSubjectId(): void
     {
@@ -33,6 +45,7 @@ class Grading extends Component
         }
         $this->sortDir = $this->sortBy === $column && $this->sortDir === 'asc' ? 'desc' : 'asc';
         $this->sortBy = $column;
+        $this->resetPage(); // เรียงใหม่ → กลับหน้า 1
     }
 
     public function saveScores(): void
@@ -78,7 +91,11 @@ class Grading extends Component
             $students = Student::query()
                 ->whereHas('subjects', fn ($q) => $q->whereKey($this->subjectId))
                 ->when($this->group, fn ($q) => $q->where('study_group', $this->group))
-                ->orderBy($this->sortBy, $this->sortDir)->get();
+                // ห่อ closure เพราะมี whereHas นำหน้า — กัน orWhere หลุด scope
+                ->when($this->search, fn ($q) => $q->where(fn ($w) => $w
+                    ->where('student_code', 'like', "%{$this->search}%")
+                    ->orWhere('full_name', 'like', "%{$this->search}%")))
+                ->orderBy($this->sortBy, $this->sortDir)->paginate(20);
 
             if ($this->assignmentId) {
                 // โหมดต่อชิ้นงาน: 1 แถว/นักศึกษา + สถานะ + กรองสถานะได้
