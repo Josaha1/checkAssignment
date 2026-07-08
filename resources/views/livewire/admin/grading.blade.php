@@ -45,6 +45,17 @@
                 </div>
             @endif
             @if ($subjectId)
+                <div>
+                    <label class="label">ต่อหน้า</label>
+                    <select wire:model.live="perPage" class="select !w-auto">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            @endif
+            @if ($subjectId)
                 <div class="ml-auto flex gap-2">
                     <button wire:click="saveScores" class="btn-primary"><x-icon name="check" class="w-4 h-4" /> บันทึกคะแนน</button>
                     <a href="{{ route('admin.export', ['subject' => $subjectId, 'group' => $group]) }}" class="btn-success"><x-icon name="download" class="w-4 h-4" /> Export CSV</a>
