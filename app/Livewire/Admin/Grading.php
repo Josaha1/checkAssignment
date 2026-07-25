@@ -55,10 +55,14 @@ class Grading extends Component
         $this->resetPage(); // เรียงใหม่ → กลับหน้า 1
     }
 
-    public function saveScores(): void
+    // $only = submissionId → บันทึกเฉพาะแถวนั้น (ปุ่มราย row); ไม่ส่ง = บันทึกทุกแถว (ปุ่มรวมเดิม)
+    public function saveScores(?int $only = null): void
     {
         $actor = auth('web')->user()?->name;
         foreach ($this->scores as $submissionId => $value) {
+            if ($only !== null && (int) $submissionId !== $only) {
+                continue; // ระบุแถว → ข้ามแถวอื่นที่พิมพ์ค้าง ไม่ให้บันทึกพลอย
+            }
             $submission = Submission::find($submissionId);
             if (! $submission) {
                 continue;
