@@ -38,6 +38,12 @@ class Grading extends Component
         $this->statusFilter = '';
     }
 
+    // สลับงาน → ทิ้งคะแนนที่พิมพ์ค้างของงานก่อน กัน persist ข้ามงานตอนกดบันทึก (แต่ละงานตรวจแยกกัน)
+    public function updatedAssignmentId(): void
+    {
+        $this->scores = [];
+    }
+
     // เรียงได้เฉพาะคอลัมน์นักศึกษา (matrix คะแนนต่องานเรียงไม่ได้)
     public function sort(string $column): void
     {

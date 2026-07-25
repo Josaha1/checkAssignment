@@ -113,7 +113,9 @@
                                     </td>
                                     <td class="td text-center">
                                         @if ($row['submission'])
+                                            {{-- wire:key ผูก submissionId: สลับงาน → id เปลี่ยน morphdom ทิ้ง input เดิม สร้างใหม่ ค่าที่ค้างใน DOM ไม่รั่วข้ามงาน --}}
                                             <input type="number" step="0.01" min="0" max="{{ $selectedAssignment?->max_score }}"
+                                                   wire:key="score-{{ $row['submission']->id }}"
                                                    wire:model="scores.{{ $row['submission']->id }}"
                                                    class="input !w-20 text-center !py-1.5">
                                         @else
