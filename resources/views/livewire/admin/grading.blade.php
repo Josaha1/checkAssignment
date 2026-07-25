@@ -113,11 +113,20 @@
                                     </td>
                                     <td class="td text-center">
                                         @if ($row['submission'])
-                                            {{-- wire:key ผูก submissionId: สลับงาน → id เปลี่ยน morphdom ทิ้ง input เดิม สร้างใหม่ ค่าที่ค้างใน DOM ไม่รั่วข้ามงาน --}}
-                                            <input type="number" step="0.01" min="0" max="{{ $selectedAssignment?->max_score }}"
-                                                   wire:key="score-{{ $row['submission']->id }}"
-                                                   wire:model="scores.{{ $row['submission']->id }}"
-                                                   class="input !w-20 text-center !py-1.5">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                {{-- wire:key ผูก submissionId: สลับงาน → id เปลี่ยน morphdom ทิ้ง input เดิม สร้างใหม่ ค่าที่ค้างใน DOM ไม่รั่วข้ามงาน --}}
+                                                <input type="number" step="0.01" min="0" max="{{ $selectedAssignment?->max_score }}"
+                                                       wire:key="score-{{ $row['submission']->id }}"
+                                                       wire:model="scores.{{ $row['submission']->id }}"
+                                                       class="input !w-20 text-center !py-1.5">
+                                                {{-- บันทึกเฉพาะแถวนี้ (ส่ง submissionId → saveScores ข้ามแถวอื่น) ไม่ต้องกดบันทึกรวม --}}
+                                                <button type="button" wire:click="saveScores({{ $row['submission']->id }})"
+                                                        wire:loading.attr="disabled" wire:target="saveScores({{ $row['submission']->id }})"
+                                                        title="บันทึกคะแนนแถวนี้"
+                                                        class="shrink-0 p-1.5 rounded-lg text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-40">
+                                                    <x-icon name="check" class="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         @else
                                             <span class="text-slate-400 text-xs">—</span>
                                         @endif
